@@ -1,0 +1,181 @@
+# =========================
+
+# Environment & Secrets
+
+# =========================
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+credentials.json
+
+# =========================
+
+# Python
+
+# =========================
+
+**pycache**/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+
+.venv/
+myenv/
+venv/
+env/
+ENV/
+
+# Packaging
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checking / linting
+
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# =========================
+
+# Node / Next.js
+
+# =========================
+
+node_modules/
+.next/
+out/
+dist/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+
+# IDEs & Editors
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# OS
+
+# =========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =========================
+
+# Logs
+
+# =========================
+
+*.log
+logs/
+
+# =========================
+
+# Database / Local Data
+
+# =========================
+
+*.sqlite
+*.sqlite3
+*.db
+
+# PostgreSQL local files
+
+postgres-data/
+
+# =========================
+
+# Temporary Files
+
+# =========================
+
+*.tmp
+*.temp
+tmp/
+temp/
+
+# =========================
+
+# Coverage / Reports
+
+# =========================
+
+coverage/
+reports/
+
+# =========================
+
+# Local Generated Data
+
+# =========================
+
+data/
+*.csv
+*.jsonl
+
+# Keep explicitly tracked example files
+
+!data/.gitkeep
+
+# =========================
+
+# Build / Cache
+
+# =========================
+
+.cache/
+.parcel-cache/
+.turbo/
+
+# =========================
+
+# Secrets / API Keys
+
+# =========================
+
+*secret*
+*secrets*
+*token*
+*apikey*
+*api_key*
+
+# =========================
+
+# Docker
+
+# =========================
+
+docker-compose.override.yml
