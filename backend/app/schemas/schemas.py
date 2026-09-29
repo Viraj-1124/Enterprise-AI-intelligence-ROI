@@ -162,3 +162,57 @@ class PromptAnalyzeResponse(BaseModel):
     missing: list[str]
     suggestions: list[str]
     improved_prompt: str
+
+
+class AgentOptimizeRequest(BaseModel):
+    task_id: Optional[str] = None
+    employee_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    task_type: Optional[str] = None
+    complexity: Optional[str] = None
+    required_quality: float = Field(80, ge=0, le=100)
+    expected_input_tokens: Optional[int] = Field(None, ge=0)
+    expected_output_tokens: Optional[int] = Field(None, ge=0)
+    max_latency_ms: Optional[int] = Field(None, gt=0)
+    verification_required: Optional[bool] = None
+
+
+class AgentResultRequest(BaseModel):
+    actual_input_tokens: Optional[int] = Field(None, ge=0)
+    actual_output_tokens: Optional[int] = Field(None, ge=0)
+    actual_cost: Optional[float] = Field(None, ge=0)
+    actual_latency_ms: Optional[int] = Field(None, ge=0)
+    actual_quality: Optional[float] = Field(None, ge=0, le=100)
+    outcome: Optional[str] = None
+    verification_required: Optional[bool] = None
+    rework_required: Optional[bool] = None
+
+
+class AgentDecisionOut(BaseModel):
+    id: str
+    task_id: Optional[str]
+    task_type: str
+    complexity: str
+    required_quality: float
+    selected_provider: str
+    selected_model: str
+    predicted_input_tokens: Optional[int]
+    predicted_output_tokens: Optional[int]
+    predicted_cost: Optional[float]
+    predicted_latency_ms: Optional[int]
+    predicted_quality: float
+    confidence: float
+    rationale: Optional[dict[str, Any]]
+    actual_input_tokens: Optional[int]
+    actual_output_tokens: Optional[int]
+    actual_cost: Optional[float]
+    actual_latency_ms: Optional[int]
+    actual_quality: Optional[float]
+    outcome: Optional[str]
+    verification_required: Optional[bool]
+    rework_required: Optional[bool]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

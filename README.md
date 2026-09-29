@@ -625,9 +625,9 @@ ROI
 Prompt Intelligence
 ```
 
-Future research will extend the platform toward:
+Future research will extend the initial agent routing prototype toward:
 
-### Adaptive AI Agent Routing
+### AI Agent Optimization
 
 Automatically selecting the most suitable AI agent/model for a task based on:
 
@@ -640,7 +640,13 @@ Automatically selecting the most suitable AI agent/model for a task based on:
 * Rework probability
 * Historical task performance
 
-The proposed optimization objective is:
+The current prototype includes a deterministic recommendation endpoint and a model catalog in `backend/app/services/agent_optimizer.py`. Task creation also records a recommendation automatically. Decisions retain selected provider/model, predicted tokens, cost, latency, quality, confidence, and rationale. Result reports capture observed quality, outcome, rework, latency, and usage; linked AI usage events fill actual token and cost fields automatically. Historical results inform later selections.
+
+Endpoints: `POST /api/agents/optimize`, `POST /api/agents/decisions/{id}/result`, `GET /api/agents/tasks/{task_id}/decision`, `GET /api/agents/catalog`, and `GET /api/agents/analytics`.
+
+Recommendations remain estimates until a model integration executes the request. Catalog quality and latency values are priors and should be replaced with measured deployment benchmarks and current per-model prices.
+
+The optimization objective is:
 
 ```text
 Minimize:
@@ -657,7 +663,7 @@ and
 Required Success Probability
 ```
 
-This will form the basis for future experimental evaluation.
+The current routing policy minimizes estimated token cost among catalog entries predicted to meet quality and latency requirements. Verification and rework are recorded for future policy improvements; they are not yet costed as separate terms.
 
 ---
 
@@ -703,9 +709,10 @@ Planned research extensions:
 * Management dashboard
 * Task-level ROI
 * Prompt Intelligence
+* AI Agent Optimization
 * External connector architecture
 
-**Research optimization layer:** Planned
+**Research optimization layer:** Initial rule-based routing implemented; calibration and orchestration remain future work.
 
 ---
 

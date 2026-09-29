@@ -6,7 +6,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database.session import Base, engine
 from app.models import models  # noqa: F401 ensure models are registered
-from app.api import auth, organization, tasks, sessions, ai_usage, outcomes, roi, dashboard, prompts, connectors
+from app.api import auth, organization, tasks, sessions, ai_usage, outcomes, roi, dashboard, prompts, connectors, agents
 
 app = FastAPI(title="Enterprise AI Intelligence & ROI Platform", version="0.1.0")
 
@@ -49,3 +49,4 @@ app.include_router(roi.router)
 app.include_router(dashboard.router)
 app.include_router(prompts.router)
 app.include_router(connectors.router)
+app.include_router(agents.router)

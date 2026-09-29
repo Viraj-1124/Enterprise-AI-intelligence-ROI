@@ -5,15 +5,21 @@ from sqlalchemy.orm import Session
 
 from app.analytics.roi_engine import TaskROIInputs, calculate_task_roi, compute_ai_assisted_time_minutes
 from app.database.session import get_db
-from app.models.models import ActivityEvent, AIUsage, Employee, ROIMetric, Task, TaskStatus, CalculationStatus
+from app.models.models import ActivityEvent, AgentDecision, AIUsage, Employee, ROIMetric, Task, TaskStatus, CalculationStatus
 from app.schemas.schemas import TaskCompleteRequest, TaskOut, TaskStartRequest
+from app.schemas.schemas import AgentOptimizeRequest
+from app.api.agents import _save_recommendation
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 
 def _recalculate_roi(db: Session, task: Task) -> ROIMetric:
     ai_costs = [e.cost for e in task.ai_usage_events if e.cost is not None]
-    ai_cost = sum(ai_costs) if ai_costs else None
+    decision_costs = [d.actual_cost for d in db.query(AgentDecision).filter(AgentDecision.task_id == task.id).all()
+                      if d.actual_cost is not None]
+    # Usage events are the primary source; a reported agent result can fill a gap
+    # when an integration has not emitted a separate usage event.
+    ai_cost = sum(ai_costs) if ai_costs else (sum(decision_costs) if decision_costs else None)
 
     result = calculate_task_roi(
         TaskROIInputs(
@@ -69,6 +75,9 @@ def start_task(req: TaskStartRequest, db: Session = Depends(get_db)):
         source="observed", tool=None, event_metadata={"title": req.title},
     ))
     db.commit()
+    _save_recommendation(db, AgentOptimizeRequest(
+        task_id=task.id, title=task.title, description=task.description, task_type=task.category,
+    ), task)
     return task
 
 

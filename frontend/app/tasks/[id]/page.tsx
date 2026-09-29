@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-medium text-gray-700">{title}</h3>
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/[0.025] sm:p-6">
+      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       <div className="mt-3 space-y-2">{children}</div>
     </div>
   );
@@ -16,8 +16,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, value, source }: { label: string; value: string; source?: string }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="flex items-center gap-2 font-medium text-gray-900">
+      <span className="text-slate-500">{label}</span>
+      <span className="flex items-center gap-2 font-medium text-slate-900">
         {value}
         {source && <ProvenanceBadge source={source} />}
       </span>
@@ -42,8 +42,9 @@ export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]"
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">{task.title}</h1>
-        <p className="mt-1 text-sm text-gray-500">{task.category ?? "Uncategorized"} · Task ID {task.id}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">Task report</p>
+        <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">{task.title}</h1>
+        <p className="mt-2 text-sm text-slate-500">{task.category ?? "Uncategorized"} <span className="mx-1 text-slate-300">·</span> Task ID <span className="font-mono text-xs">{task.id}</span></p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -59,7 +60,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]"
             <p className="text-sm text-gray-400">No AI usage recorded for this task.</p>
           ) : (
             aiEvents.map((e) => (
-              <div key={e.id} className="rounded-lg bg-gray-50 p-3 text-sm">
+              <div key={e.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">{e.provider}{e.model ? ` · ${e.model}` : ""}</span>
                   <ProvenanceBadge source={e.source} />

@@ -15,8 +15,8 @@ export default async function DashboardPage() {
 
   if (error || !dashboard) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
-        <p className="font-medium">Could not reach the backend API.</p>
+      <div className="rounded-2xl border border-rose-200 bg-white p-6 text-rose-800 shadow-sm">
+        <p className="font-semibold">Could not reach the backend API.</p>
         <p className="mt-1 text-sm">
           Make sure the FastAPI backend is running at{" "}
           <code className="rounded bg-red-100 px-1">NEXT_PUBLIC_API_BASE_URL</code> (default{" "}
@@ -29,16 +29,18 @@ export default async function DashboardPage() {
   const d = dashboard;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Management Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-7">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">Overview</p>
+        <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">Management Dashboard</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
           Estimated values are based on configured assumptions. Observed values come from connected work
           activity. ROI represents modeled economic value and is not causal proof of productivity improvement.
-        </p>
+        </p></div>
+        <div className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:self-auto"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Analytics ready</div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard label="AI Spend" value={formatValue(d.ai_spend.value, "$")} source={d.ai_spend.source} note={d.ai_spend.note} />
         <KpiCard label="AI-Assisted Tasks" value={`${d.ai_assisted_tasks} / ${d.total_tasks}`} source="observed" />
         <KpiCard label="Time Saved" value={`${formatValue(d.time_saved_minutes.value)} min`} source={d.time_saved_minutes.source} />
@@ -54,10 +56,11 @@ export default async function DashboardPage() {
       </div>
 
       {(d.tasks_missing_cost_data > 0) && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm leading-6 text-amber-900">
+          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 font-semibold">!</span><span>
           {d.tasks_missing_cost_data} of {d.tasks_with_cost_data + d.tasks_missing_cost_data} tasks with a calculated
           labor value have no available AI cost data, so they are excluded from aggregate AI spend and ROI.
-        </div>
+          </span></div>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -76,11 +79,11 @@ export default async function DashboardPage() {
           title="AI Usage by Provider (events)"
           data={Object.entries(d.provider_stats).map(([name, s]) => ({ name, value: s.events }))}
         />
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-700">Department Breakdown</h3>
-          <table className="mt-3 w-full text-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/[0.025] sm:p-6">
+          <h3 className="text-sm font-semibold text-slate-800">Department Breakdown</h3>
+          <div className="mt-4 overflow-x-auto"><table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500">
+              <tr className="text-left text-slate-500">
                 <th className="pb-2">Department</th>
                 <th className="pb-2">Employees</th>
                 <th className="pb-2">Tasks</th>
@@ -106,7 +109,7 @@ export default async function DashboardPage() {
                 </tr>
               )}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </div>

@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from app.analytics.roi_engine import compute_ai_cost_from_tokens
 from app.config import get_settings
 from app.database.session import get_db
-from app.models.models import ActivityEvent, AIUsage, DataSource, Task
+from app.models.models import ActivityEvent, AgentDecision, AIUsage, DataSource, Task
 from app.schemas.schemas import AIUsageEventRequest, AIUsageOut
+from app.services.agent_optimizer import model_pricing
 
 router = APIRouter(prefix="/api/tasks", tags=["ai-usage"])
 settings = get_settings()
@@ -25,7 +26,7 @@ def record_ai_event(task_id: str, req: AIUsageEventRequest, db: Session = Depend
     cost = None
     if req.input_tokens is not None and req.output_tokens is not None:
         total_tokens = req.input_tokens + req.output_tokens
-        pricing = settings.PROVIDER_PRICING_PER_MILLION_TOKENS.get(req.provider)
+        pricing = model_pricing(req.provider, req.model) or settings.PROVIDER_PRICING_PER_MILLION_TOKENS.get(req.provider)
         if pricing and source in (DataSource.connector, DataSource.observed):
             cost = compute_ai_cost_from_tokens(
                 req.input_tokens, req.output_tokens, pricing["input"], pricing["output"]
@@ -47,6 +48,24 @@ def record_ai_event(task_id: str, req: AIUsageEventRequest, db: Session = Depend
     db.add(event)
     db.commit()
     db.refresh(event)
+
+    decisions = db.query(AgentDecision).filter(
+        AgentDecision.task_id == task_id,
+        AgentDecision.selected_provider == req.provider,
+        AgentDecision.selected_model == req.model,
+    ).all()
+    matching_events = db.query(AIUsage).filter(
+        AIUsage.task_id == task_id, AIUsage.provider == req.provider, AIUsage.model == req.model,
+    ).all()
+    for decision in decisions:
+        if matching_events and all(e.input_tokens is not None for e in matching_events):
+            decision.actual_input_tokens = sum(e.input_tokens for e in matching_events)
+        if matching_events and all(e.output_tokens is not None for e in matching_events):
+            decision.actual_output_tokens = sum(e.output_tokens for e in matching_events)
+        if matching_events and all(e.cost is not None for e in matching_events):
+            decision.actual_cost = sum(e.cost for e in matching_events)
+    if decisions:
+        db.commit()
 
     db.add(ActivityEvent(
         employee_id=req.employee_id, task_id=task_id, event_type="ai_request",

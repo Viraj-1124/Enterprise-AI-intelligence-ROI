@@ -118,10 +118,38 @@ export interface PromptAnalysis {
   improved_prompt: string;
 }
 
+export interface AgentDecision {
+  id: string; task_id: string | null; task_type: string; complexity: string; required_quality: number;
+  selected_provider: string; selected_model: string; predicted_input_tokens: number | null;
+  predicted_output_tokens: number | null; predicted_cost: number | null; predicted_latency_ms: number | null;
+  predicted_quality: number; confidence: number; rationale: Record<string, unknown> | null;
+  actual_input_tokens: number | null; actual_output_tokens: number | null; actual_cost: number | null;
+  actual_latency_ms: number | null; actual_quality: number | null; outcome: string | null;
+  verification_required: boolean | null; rework_required: boolean | null; created_at: string;
+}
+
+export interface DepartmentDashboard {
+  department: string; employees: number; tasks: number; ai_assisted_tasks: number; ai_adoption_pct: number;
+  time_saved_minutes: number; estimated_value: number; ai_spend: number | string; roi_percentage: number | string;
+}
+
+export interface EmployeeDashboard {
+  employee: string; department_id: string | null; tasks_completed: number; ai_assisted_tasks: number;
+  time_saved_minutes: number; ai_usage_events: number; ai_cost: number | string;
+  estimated_value: number; roi_percentage: number | string;
+}
+
+export interface AgentAnalytics {
+  recommendations: number; results_recorded: number; observed_decisions_with_cost: number;
+  predicted_cost: number; actual_cost: number; cost_below_prediction_total: number;
+  average_actual_quality: number | null;
+  models: Record<string, { recommendations: number; evaluated: number }>;
+}
+
 export const api = {
   managementDashboard: () => request<ManagementDashboard>("/api/dashboard/management"),
-  departmentDashboard: (id: string) => request<any>(`/api/dashboard/department/${id}`),
-  employeeDashboard: (id: string) => request<any>(`/api/dashboard/employee/${id}`),
+  departmentDashboard: (id: string) => request<DepartmentDashboard>(`/api/dashboard/department/${id}`),
+  employeeDashboard: (id: string) => request<EmployeeDashboard>(`/api/dashboard/employee/${id}`),
   tasks: (params?: { employee_id?: string; status?: string }) => {
     const qs = new URLSearchParams(params as Record<string, string>).toString();
     return request<Task[]>(`/api/tasks${qs ? `?${qs}` : ""}`);
@@ -135,6 +163,11 @@ export const api = {
   connectors: () => request<ConnectorStatus[]>("/api/connectors"),
   analyzePrompt: (prompt: string) =>
     request<PromptAnalysis>("/api/prompt/analyze", { method: "POST", body: JSON.stringify({ prompt }) }),
+  optimizeAgent: (input: { title: string; description?: string; task_type?: string; complexity?: string; required_quality: number }) =>
+    request<AgentDecision>("/api/agents/optimize", { method: "POST", body: JSON.stringify(input) }),
+  agentAnalytics: () => request<AgentAnalytics>("/api/agents/analytics"),
+  recordAgentResult: (id: string, input: { actual_quality?: number; outcome?: string; rework_required?: boolean; actual_latency_ms?: number; actual_input_tokens?: number; actual_output_tokens?: number; actual_cost?: number }) =>
+    request<AgentDecision>(`/api/agents/decisions/${id}/result`, { method: "POST", body: JSON.stringify(input) }),
 };
 
 export function formatValue(v: number | string | null | undefined, prefix = ""): string {

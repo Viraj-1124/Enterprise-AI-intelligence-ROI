@@ -197,3 +197,34 @@ class ActivityEvent(Base):
     source = Column(String, nullable=False)
     tool = Column(String, nullable=True)
     event_metadata = Column(JSON, nullable=True)
+
+
+class AgentDecision(Base):
+    """Auditable agent recommendation and observed result for learning."""
+
+    __tablename__ = "agent_decisions"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    task_id = Column(String, ForeignKey("tasks.id"), nullable=True, index=True)
+    task_type = Column(String, nullable=False)
+    complexity = Column(String, nullable=False)
+    required_quality = Column(Float, nullable=False)
+    selected_provider = Column(String, nullable=False)
+    selected_model = Column(String, nullable=False)
+    predicted_input_tokens = Column(Integer, nullable=True)
+    predicted_output_tokens = Column(Integer, nullable=True)
+    predicted_cost = Column(Float, nullable=True)
+    predicted_latency_ms = Column(Integer, nullable=True)
+    predicted_quality = Column(Float, nullable=False)
+    confidence = Column(Float, nullable=False)
+    rationale = Column(JSON, nullable=True)
+    actual_input_tokens = Column(Integer, nullable=True)
+    actual_output_tokens = Column(Integer, nullable=True)
+    actual_cost = Column(Float, nullable=True)
+    actual_latency_ms = Column(Integer, nullable=True)
+    actual_quality = Column(Float, nullable=True)
+    outcome = Column(String, nullable=True)
+    verification_required = Column(Boolean, nullable=True)
+    rework_required = Column(Boolean, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
