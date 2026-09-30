@@ -5,15 +5,18 @@ from app.analytics.roi_engine import calculate_aggregate_roi, TaskROIResult
 from app.database.session import get_db
 from app.models.models import ROIMetric, Task
 from app.schemas.schemas import ROIOut
+from app.services.auth import get_current_employee, require_roles
 
 router = APIRouter(prefix="/api", tags=["roi"])
 
 
 @router.get("/tasks/{task_id}/roi", response_model=ROIOut)
-def get_task_roi(task_id: str, db: Session = Depends(get_db)):
+def get_task_roi(task_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     roi = db.query(ROIMetric).filter(ROIMetric.task_id == task_id).first()
     if not roi:
         raise HTTPException(status_code=404, detail="ROI not yet calculated for this task")
@@ -31,7 +34,7 @@ def get_task_roi(task_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/dashboard/roi")
-def get_dashboard_roi(db: Session = Depends(get_db)):
+def get_dashboard_roi(db: Session = Depends(get_db), _manager=Depends(require_roles("admin", "manager"))):
     metrics = db.query(ROIMetric).all()
     task_results = [
         TaskROIResult(

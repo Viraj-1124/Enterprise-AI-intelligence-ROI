@@ -16,6 +16,12 @@ class Token(BaseModel):
     role: str
 
 
+class BootstrapRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
 # ---- Department / Employee ----
 class DepartmentCreate(BaseModel):
     name: str

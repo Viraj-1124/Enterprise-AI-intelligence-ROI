@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.analytics.roi_engine import calculate_aggregate_roi, TaskROIResult
 from app.database.session import get_db
 from app.models.models import AIUsage, Department, Employee, ROIMetric, Task, TaskStatus
+from app.services.auth import get_current_employee, require_roles
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -28,7 +29,7 @@ def _na(value):
 
 
 @router.get("/management")
-def management_dashboard(db: Session = Depends(get_db)):
+def management_dashboard(db: Session = Depends(get_db), _manager=Depends(require_roles("admin", "manager"))):
     tasks = db.query(Task).all()
     metrics = db.query(ROIMetric).all()
     ai_events = db.query(AIUsage).all()
@@ -115,7 +116,7 @@ def management_dashboard(db: Session = Depends(get_db)):
 
 
 @router.get("/department/{department_id}")
-def department_dashboard(department_id: str, db: Session = Depends(get_db)):
+def department_dashboard(department_id: str, db: Session = Depends(get_db), _manager=Depends(require_roles("admin", "manager"))):
     dept = db.query(Department).filter(Department.id == department_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
@@ -144,7 +145,9 @@ def department_dashboard(department_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/employee/{employee_id}")
-def employee_dashboard(employee_id: str, db: Session = Depends(get_db)):
+def employee_dashboard(employee_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
+    if current.role.value == "employee" and current.id != employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")

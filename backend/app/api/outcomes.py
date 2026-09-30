@@ -6,15 +6,18 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.models import ActivityEvent, Task, TaskOutcome
 from app.schemas.schemas import TaskOutcomeOut, TaskOutcomeRequest
+from app.services.auth import get_current_employee
 
 router = APIRouter(prefix="/api/tasks", tags=["outcomes"])
 
 
 @router.post("/{task_id}/outcome", response_model=TaskOutcomeOut)
-def record_outcome(task_id: str, req: TaskOutcomeRequest, db: Session = Depends(get_db)):
+def record_outcome(task_id: str, req: TaskOutcomeRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     outcome = db.query(TaskOutcome).filter(TaskOutcome.task_id == task_id).first()
     if outcome is None:
@@ -43,7 +46,12 @@ def record_outcome(task_id: str, req: TaskOutcomeRequest, db: Session = Depends(
 
 
 @router.get("/{task_id}/outcome", response_model=TaskOutcomeOut)
-def get_outcome(task_id: str, db: Session = Depends(get_db)):
+def get_outcome(task_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     outcome = db.query(TaskOutcome).filter(TaskOutcome.task_id == task_id).first()
     if not outcome:
         raise HTTPException(status_code=404, detail="No outcome recorded for this task")

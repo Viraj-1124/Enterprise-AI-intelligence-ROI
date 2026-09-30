@@ -2,17 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.models.models import AgentDecision, AIUsage, ActivityEvent, Task
+from app.models.models import AgentDecision, AIUsage, ActivityEvent, Role, Task
 from app.schemas.schemas import AgentDecisionOut, AgentOptimizeRequest, AgentResultRequest
 from app.services.agent_optimizer import AGENTS, recommend
+from app.services.auth import get_current_employee, require_roles
 
 router = APIRouter(prefix="/api/agents", tags=["agent-optimization"])
 
 
-def _save_recommendation(db: Session, req: AgentOptimizeRequest, task=None):
+def _save_recommendation(db: Session, req: AgentOptimizeRequest, task=None, employee_id: str | None = None):
     recommendation, _ = recommend(db, req)
     decision = AgentDecision(
-        task_id=req.task_id, **{k: recommendation[k] for k in (
+        task_id=req.task_id, employee_id=(task.employee_id if task else employee_id), **{k: recommendation[k] for k in (
             "task_type", "complexity", "required_quality", "selected_provider", "selected_model",
             "predicted_input_tokens", "predicted_output_tokens", "predicted_cost",
             "predicted_latency_ms", "predicted_quality", "confidence", "rationale",
@@ -31,20 +32,26 @@ def _save_recommendation(db: Session, req: AgentOptimizeRequest, task=None):
 
 
 @router.post("/optimize", response_model=AgentDecisionOut)
-def optimize(req: AgentOptimizeRequest, db: Session = Depends(get_db)):
+def optimize(req: AgentOptimizeRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = None
     if req.task_id:
         task = db.query(Task).filter(Task.id == req.task_id).first()
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
-    return _save_recommendation(db, req, task)
+        if current.role == Role.employee and task.employee_id != current.id:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return _save_recommendation(db, req, task, current.id)
 
 
 @router.post("/decisions/{decision_id}/result", response_model=AgentDecisionOut)
-def record_result(decision_id: str, req: AgentResultRequest, db: Session = Depends(get_db)):
+def record_result(decision_id: str, req: AgentResultRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     decision = db.query(AgentDecision).filter(AgentDecision.id == decision_id).first()
     if not decision:
         raise HTTPException(status_code=404, detail="Agent decision not found")
+    task = db.query(Task).filter(Task.id == decision.task_id).first() if decision.task_id else None
+    decision_employee_id = task.employee_id if task else decision.employee_id
+    if current.role == Role.employee and decision_employee_id != current.id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     for field in ("actual_input_tokens", "actual_output_tokens", "actual_cost", "actual_latency_ms",
                   "actual_quality", "outcome", "verification_required", "rework_required"):
         value = getattr(req, field)
@@ -79,7 +86,12 @@ def catalog():
 
 
 @router.get("/tasks/{task_id}/decision", response_model=AgentDecisionOut)
-def task_decision(task_id: str, db: Session = Depends(get_db)):
+def task_decision(task_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if current.role == Role.employee and task.employee_id != current.id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     decision = db.query(AgentDecision).filter(AgentDecision.task_id == task_id).order_by(AgentDecision.created_at.desc()).first()
     if not decision:
         raise HTTPException(status_code=404, detail="No agent recommendation recorded for this task")
@@ -87,7 +99,7 @@ def task_decision(task_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/analytics")
-def analytics(db: Session = Depends(get_db)):
+def analytics(db: Session = Depends(get_db), _manager=Depends(require_roles("admin", "manager"))):
     decisions = db.query(AgentDecision).all()
     observed = [d for d in decisions if d.actual_cost is not None]
     savings = sum(max(0, d.predicted_cost - d.actual_cost) for d in observed if d.predicted_cost is not None)

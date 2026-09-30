@@ -9,6 +9,7 @@ from app.models.models import ActivityEvent, AgentDecision, AIUsage, Employee, R
 from app.schemas.schemas import TaskCompleteRequest, TaskOut, TaskStartRequest
 from app.schemas.schemas import AgentOptimizeRequest
 from app.api.agents import _save_recommendation
+from app.services.auth import get_current_employee
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -50,7 +51,9 @@ def _recalculate_roi(db: Session, task: Task) -> ROIMetric:
 
 
 @router.post("/start", response_model=TaskOut)
-def start_task(req: TaskStartRequest, db: Session = Depends(get_db)):
+def start_task(req: TaskStartRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
+    if current.role.value == "employee" and current.id != req.employee_id:
+        raise HTTPException(status_code=403, detail="Employees can only start tasks for themselves")
     employee = db.query(Employee).filter(Employee.id == req.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -77,15 +80,17 @@ def start_task(req: TaskStartRequest, db: Session = Depends(get_db)):
     db.commit()
     _save_recommendation(db, AgentOptimizeRequest(
         task_id=task.id, title=task.title, description=task.description, task_type=task.category,
-    ), task)
+    ), task, current.id)
     return task
 
 
 @router.post("/{task_id}/complete", response_model=TaskOut)
-def complete_task(task_id: str, req: TaskCompleteRequest, db: Session = Depends(get_db)):
+def complete_task(task_id: str, req: TaskCompleteRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     if task.status == TaskStatus.completed:
         raise HTTPException(status_code=400, detail="Task is already completed")
     if task.started_at is None:
@@ -108,8 +113,10 @@ def complete_task(task_id: str, req: TaskCompleteRequest, db: Session = Depends(
 
 
 @router.get("", response_model=list[TaskOut])
-def list_tasks(employee_id: str | None = None, status: str | None = None, db: Session = Depends(get_db)):
+def list_tasks(employee_id: str | None = None, status: str | None = None, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     query = db.query(Task)
+    if current.role.value == "employee":
+        query = query.filter(Task.employee_id == current.id)
     if employee_id:
         query = query.filter(Task.employee_id == employee_id)
     if status:
@@ -118,8 +125,10 @@ def list_tasks(employee_id: str | None = None, status: str | None = None, db: Se
 
 
 @router.get("/{task_id}", response_model=TaskOut)
-def get_task(task_id: str, db: Session = Depends(get_db)):
+def get_task(task_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     return task

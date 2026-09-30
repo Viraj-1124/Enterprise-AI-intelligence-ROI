@@ -7,16 +7,19 @@ from app.database.session import get_db
 from app.models.models import ActivityEvent, AgentDecision, AIUsage, DataSource, Task
 from app.schemas.schemas import AIUsageEventRequest, AIUsageOut
 from app.services.agent_optimizer import model_pricing
+from app.services.auth import get_current_employee
 
 router = APIRouter(prefix="/api/tasks", tags=["ai-usage"])
 settings = get_settings()
 
 
 @router.post("/{task_id}/ai-events", response_model=AIUsageOut)
-def record_ai_event(task_id: str, req: AIUsageEventRequest, db: Session = Depends(get_db)):
+def record_ai_event(task_id: str, req: AIUsageEventRequest, db: Session = Depends(get_db), current=Depends(get_current_employee)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and (current.id != task.employee_id or req.employee_id != current.id):
+        raise HTTPException(status_code=403, detail="Employees can only record usage for their own tasks")
     try:
         source = DataSource(req.source)
     except ValueError:
@@ -81,5 +84,10 @@ def record_ai_event(task_id: str, req: AIUsageEventRequest, db: Session = Depend
 
 
 @router.get("/{task_id}/ai-events", response_model=list[AIUsageOut])
-def list_ai_events(task_id: str, db: Session = Depends(get_db)):
+def list_ai_events(task_id: str, db: Session = Depends(get_db), current=Depends(get_current_employee)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if current.role.value == "employee" and current.id != task.employee_id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     return db.query(AIUsage).filter(AIUsage.task_id == task_id).all()

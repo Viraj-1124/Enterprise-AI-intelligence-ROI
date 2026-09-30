@@ -206,6 +206,7 @@ class AgentDecision(Base):
 
     id = Column(String, primary_key=True, default=gen_id)
     task_id = Column(String, ForeignKey("tasks.id"), nullable=True, index=True)
+    employee_id = Column(String, ForeignKey("employees.id"), nullable=True, index=True)
     task_type = Column(String, nullable=False)
     complexity = Column(String, nullable=False)
     required_quality = Column(Float, nullable=False)
@@ -228,3 +229,16 @@ class AgentDecision(Base):
     rework_required = Column(Boolean, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EmployeeConnection(Base):
+    """Provider account linked by an employee through an OAuth flow."""
+
+    __tablename__ = "employee_connections"
+
+    id = Column(String, primary_key=True, default=gen_id)
+    employee_id = Column(String, ForeignKey("employees.id"), nullable=False, index=True)
+    provider = Column(String, nullable=False)
+    account_id = Column(String, nullable=False)
+    account_name = Column(String, nullable=False)
+    connected_at = Column(DateTime, default=datetime.utcnow)

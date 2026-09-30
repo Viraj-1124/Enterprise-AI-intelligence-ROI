@@ -21,6 +21,12 @@ class Settings:
     ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY") or None
     GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY") or None
     GITHUB_TOKEN: str | None = os.getenv("GITHUB_TOKEN") or None
+    GITHUB_OAUTH_CLIENT_ID: str | None = os.getenv("GITHUB_OAUTH_CLIENT_ID") or None
+    GITHUB_OAUTH_CLIENT_SECRET: str | None = os.getenv("GITHUB_OAUTH_CLIENT_SECRET") or None
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    GITHUB_OAUTH_REDIRECT_URI: str = os.getenv(
+        "GITHUB_OAUTH_REDIRECT_URI", "http://localhost:8000/api/connectors/oauth/github/callback"
+    )
 
     # Publicly documented list pricing used ONLY when a connector legitimately
     # reports token usage. These are configuration, not observed values.

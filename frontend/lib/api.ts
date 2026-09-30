@@ -1,9 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== "undefined" ? window.localStorage.getItem("eai_access_token") : null;
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) },
     cache: "no-store",
   });
   if (!res.ok) {
@@ -76,6 +77,10 @@ export interface Employee {
   hourly_cost: number;
 }
 
+export interface AuthUser extends Employee { name: string; }
+
+export interface EmployeeConnection { id: string; employee_id: string; employee_name?: string | null; provider: string; account_name: string; connected_at: string; }
+
 export interface Department {
   id: string;
   name: string;
@@ -109,6 +114,7 @@ export interface ConnectorStatus {
   name: string;
   available: boolean;
   reason: string;
+  oauth_supported?: boolean;
 }
 
 export interface PromptAnalysis {
@@ -147,6 +153,10 @@ export interface AgentAnalytics {
 }
 
 export const api = {
+  login: (email: string, password: string) => request<{ access_token: string; token_type: string; role: string }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  me: () => request<AuthUser>("/api/auth/me"),
+  bootstrapStatus: () => request<{ setup_required: boolean }>("/api/auth/bootstrap-status"),
+  bootstrap: (input: { name: string; email: string; password: string }) => request<{ access_token: string; token_type: string; role: string }>("/api/auth/bootstrap", { method: "POST", body: JSON.stringify(input) }),
   managementDashboard: () => request<ManagementDashboard>("/api/dashboard/management"),
   departmentDashboard: (id: string) => request<DepartmentDashboard>(`/api/dashboard/department/${id}`),
   employeeDashboard: (id: string) => request<EmployeeDashboard>(`/api/dashboard/employee/${id}`),
@@ -159,8 +169,18 @@ export const api = {
   taskAIEvents: (id: string) => request<AIUsageEvent[]>(`/api/tasks/${id}/ai-events`),
   taskOutcome: (id: string) => request<TaskOutcome>(`/api/tasks/${id}/outcome`).catch(() => null),
   employees: () => request<Employee[]>("/api/employees"),
+  createEmployee: (input: { name: string; email: string; department_id?: string | null; role: string; hourly_cost: number; password: string }) => request<Employee>("/api/employees", { method: "POST", body: JSON.stringify(input) }),
+  deleteEmployee: (id: string) => request<{ status: string }>(`/api/employees/${id}`, { method: "DELETE" }),
   departments: () => request<Department[]>("/api/departments"),
+  createDepartment: (name: string) => request<Department>("/api/departments", { method: "POST", body: JSON.stringify({ name }) }),
+  deleteDepartment: (id: string) => request<{ status: string }>(`/api/departments/${id}`, { method: "DELETE" }),
   connectors: () => request<ConnectorStatus[]>("/api/connectors"),
+  connectorAccounts: () => request<EmployeeConnection[]>("/api/connectors/accounts"),
+  startOAuth: async (provider: string) => {
+    const result = await request<{ authorization_url: string }>(`/api/connectors/oauth/${provider}/start`);
+    window.location.assign(result.authorization_url);
+  },
+  disconnectAccount: (provider: string) => request<{ status: string }>(`/api/connectors/accounts/${provider}`, { method: "DELETE" }),
   analyzePrompt: (prompt: string) =>
     request<PromptAnalysis>("/api/prompt/analyze", { method: "POST", body: JSON.stringify({ prompt }) }),
   optimizeAgent: (input: { title: string; description?: string; task_type?: string; complexity?: string; required_quality: number }) =>

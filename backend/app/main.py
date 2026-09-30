@@ -5,14 +5,16 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database.session import Base, engine
+from app.config import get_settings
 from app.models import models  # noqa: F401 ensure models are registered
 from app.api import auth, organization, tasks, sessions, ai_usage, outcomes, roi, dashboard, prompts, connectors, agents
 
 app = FastAPI(title="Enterprise AI Intelligence & ROI Platform", version="0.1.0")
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
