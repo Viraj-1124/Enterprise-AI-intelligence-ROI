@@ -175,7 +175,7 @@ function App() {
         input, task_category: 'classification', privacy: simPrivacy, strategy: 'confidence_based',
         metadata: { confidence: simConfidence, orchestration_pattern: 'hierarchical', simulation: 'full_project', subtasks: plan },
       }) });
-      const configured = { privacy: simPrivacy, confidence: simConfidence, confidence_escalation_threshold: 0.65, precision: supportedPrecision, small_model: smallModel?.id || 'runtime default', quality_model: qualityModel?.id || 'runtime default', checkpoints };
+      const configured = { request_text: input, privacy: simPrivacy, confidence: simConfidence, confidence_escalation_threshold: 0.65, precision: supportedPrecision, small_model: smallModel?.id || 'runtime default', quality_model: qualityModel?.id || 'runtime default', checkpoints };
       setResult({ kind: 'project-simulation', data, configured });
       refresh();
     } catch (err) { setError(err.message); }
@@ -333,12 +333,37 @@ function ProjectSimulationResult({ result }) {
   const trace = data.trace || {};
   const nodes = trace.nodes || [];
   const totalCost = nodes.reduce((sum, node) => sum + Number(node.cost_usd || 0), 0);
-  const resultText = typeof data.result === 'string' ? data.result : Object.entries(data.result || {}).map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`).join('\n\n');
-  return <section className="panel result-panel project-result"><div className="panel-heading"><div><div className="eyebrow">PROJECT RUN COMPLETE</div><h3>Workflow outcome</h3><p>{trace.routing_path || 'Model router'} · request {data.request_id?.slice(0, 8)}</p></div><span className="success-badge"><span className="status-dot online" /> COMPLETE</span></div>
+  const byId = Object.fromEntries(nodes.map((node) => [node.node_id, node]));
+  const requestText = String(result.configured?.request_text || '').trim();
+  const display = (node) => {
+    const raw = String(node?.output ?? '').trim();
+    const cleaned = raw.split('\nParent outputs:')[0].replace(/^(Reasoning summary:|Hello! Here is a concise response:)\s*/i, '').trim();
+    const echoesPrompt = requestText.length > 24 && cleaned.toLowerCase().includes(requestText.toLowerCase());
+    return { raw, cleaned, echoesPrompt };
+  };
+  const cards = [
+    { id: 'sentiment-slm', title: 'Sentiment', role: 'Small-model classification', icon: BrainCircuit, tint: 'blue' },
+    { id: 'customer-research', title: 'Customer context', role: 'Fact extraction', icon: Search, tint: 'violet' },
+    { id: 'risk-review', title: 'Risk check', role: 'Policy and urgency scan', icon: ShieldCheck, tint: 'teal' },
+    { id: 'quality-review', title: 'Quality review', role: 'Confidence and follow-up review', icon: Gauge, tint: 'amber' },
+  ].filter((card) => byId[card.id]);
+  const synthesis = byId['orchestrator-synthesis'];
+  const synthesisOutput = display(synthesis || {});
+  const needsReview = synthesisOutput.echoesPrompt || display(byId['quality-review'] || {}).echoesPrompt;
+  const synthesisText = !synthesis ? 'The workflow completed without a synthesis node.' : synthesisOutput.echoesPrompt
+    ? 'The demo model repeated the request instead of returning a distinct recommendation. Review the individual worker findings above; the raw model response is available below.'
+    : synthesisOutput.cleaned || 'The model did not return a text response.';
+  return <section className="panel result-panel project-result">
+    <div className="panel-heading"><div><div className="eyebrow">PROJECT RUN COMPLETE</div><h3>Workflow outcome</h3><p>{trace.routing_path || 'Model router'} · request {data.request_id?.slice(0, 8)}</p></div><span className="success-badge"><span className="status-dot online" /> EXECUTED</span></div>
     <div className="result-metrics"><span><small>Workflow nodes</small><b>{nodes.length}</b></span><span><small>Parallel efficiency</small><b>{Number(trace.parallel_efficiency || 0).toFixed(2)}×</b></span><span><small>Critical path</small><b>{fmtMs(trace.critical_path_latency_ms)}</b></span><span><small>Total model cost</small><b>{fmtCurrency(totalCost)}</b></span><span><small>Model escalations</small><b>{trace.escalation_count || 0}</b></span></div>
-    <div className="project-node-list"><div className="project-node-head"><h4>What ran</h4><small>Actual runtime decisions</small></div>{nodes.map((node) => <div className="project-node" key={node.node_id}><span className="case-mark"><Check size={12} /></span><div><b>{node.node_id}</b><small>{node.model_id} · {node.provider} · {node.tier} · {String(node.output ?? '').slice(0, 180)}</small></div><span className="project-node-metrics">{fmtMs(node.latency_ms)}<small>{fmtCurrency(node.cost_usd)}</small></span></div>)}</div>
-    <div className="result-output"><span className="output-label">FINAL PROJECT RESULT</span><p>{resultText || 'Workflow finished without a textual result.'}</p></div>
-    <details className="trace-details"><summary>Inspect complete trace and simulation configuration <ChevronDown size={14} /></summary><pre>{JSON.stringify({ configuration: result.configured, trace }, null, 2)}</pre></details>
+    <div className={`synthesis-card ${needsReview ? 'needs-review' : ''}`}><div className="synthesis-card-top"><span className="synthesis-mark"><Sparkles size={17} /></span><div><small>COORDINATED PROJECT SUMMARY</small><h4>{needsReview ? 'Review the synthesis output' : 'Final recommendation'}</h4></div><span className={`synthesis-quality ${needsReview ? 'review' : ''}`}>{needsReview ? 'QUALITY REVIEW' : 'SYNTHESIZED'}</span></div><p>{synthesisText}</p><small className="synthesis-note">{needsReview ? 'Execution succeeded, but the mock response did not provide a distinct answer.' : 'Generated by the orchestration synthesis node.'}</small></div>
+    <div className="finding-section"><div className="finding-section-head"><div><div className="eyebrow">WORKER FINDINGS</div><h4>Results by workstream</h4></div><small>Node outputs, cleaned for readability</small></div>
+      <div className="finding-grid">{cards.map((card) => {
+        const node = byId[card.id]; const output = display(node); const Icon = card.icon;
+        return <article className="finding-card" key={card.id}><div className="finding-card-head"><IconMark icon={Icon} tint={card.tint} size={29} /><div><b>{card.title}</b><small>{card.role}</small></div><span className="finding-node-status">{node.final_status || 'DONE'}</span></div><div className={`finding-value ${output.echoesPrompt ? 'finding-muted' : ''}`}>{output.echoesPrompt ? 'No distinct finding returned' : output.cleaned || 'No result returned'}</div><div className="finding-card-foot"><span>{node.model_id} · {node.provider}</span><span>{fmtMs(node.latency_ms)}</span></div><details className="finding-raw"><summary>View raw node output</summary><pre>{output.raw || 'Empty output'}</pre></details></article>;
+      })}</div>
+    </div>
+    {synthesis && <details className="trace-details synthesis-raw"><summary>View raw synthesis output and full trace <ChevronDown size={14} /></summary><pre>{JSON.stringify({ synthesis_output: synthesisOutput.raw, configuration: result.configured, trace }, null, 2)}</pre></details>}
   </section>;
 }
 

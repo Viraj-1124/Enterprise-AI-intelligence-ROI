@@ -24,7 +24,8 @@ class TaskExecutor:
 
     async def execute(self, node: Node, context: dict[str, str]) -> NodeResult:
         spec = self.registry.get(node.model_id or "mock-small-fp8")
-        prompt = node.input or node.task
+        user_input = node.input or node.task
+        prompt = f"Task: {node.task.strip()}\nUser input: {user_input.strip()}"
         if context:
             prompt += "\nParent outputs: " + str(context)
         precision = node.precision or spec.precisions[0]
@@ -39,7 +40,13 @@ class TaskExecutor:
             start = time.perf_counter()
             try:
                 output = await adapter.generate(
-                    prompt, precision, category=node.task_category.value
+                    prompt,
+                    precision,
+                    category=node.task_category.value,
+                    node_id=node.node_id,
+                    task=node.task,
+                    user_input=user_input,
+                    parent_outputs=context,
                 )
                 latency = (time.perf_counter() - start) * 1000
                 validation = self.validator.validate(
