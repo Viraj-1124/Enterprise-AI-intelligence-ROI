@@ -8,6 +8,7 @@ import {
   Radio, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, Workflow, Zap,
 } from 'lucide-react';
 import './styles.css';
+import './simulation.css';
 
 const API_KEY = import.meta.env.VITE_API_KEY || 'demo-key';
 const api = async (path, init = {}) => {
@@ -69,6 +70,11 @@ function App() {
   const [suiteId, setSuiteId] = useState('customer_support');
   const [agentVersion, setAgentVersion] = useState('demo-v1');
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [simPrompt, setSimPrompt] = useState('Review this customer feedback: delivery was late, but support was helpful. Identify sentiment, risk, and the best follow-up.');
+  const [simPrivacy, setSimPrivacy] = useState('strict');
+  const [simPrecision, setSimPrecision] = useState('fp8');
+  const [simConfidence, setSimConfidence] = useState(0.82);
+  const [simRunningStep, setSimRunningStep] = useState(-1);
 
   const refresh = useCallback(async () => {
     try {
@@ -138,6 +144,44 @@ function App() {
     }
   };
 
+  const simulateProject = async () => {
+    setPage('simulation');
+    setLoading(true); setError(''); setResult(null); setSimRunningStep(0);
+    const checkpoints = [
+      'Jev rules inspect the request and decide whether a model call is needed.',
+      'The SLM handles lightweight sentiment and extraction work.',
+      'Edge placement checks whether private classification can stay on-device.',
+      'The router chooses a model tier using confidence and task requirements.',
+      'Independent research, sentiment, and risk tasks start in parallel.',
+      'The orchestrator joins worker findings into one response.',
+      'The selected precision is applied and recorded for the model nodes.',
+    ];
+    try {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      for (let i = 0; i < checkpoints.length; i += 1) { setSimRunningStep(i); await wait(360); }
+      setSimRunningStep(7);
+      const smallModel = availableModels.find((model) => model.tier === 'small') || availableModels[0];
+      const qualityModel = availableModels.find((model) => model.tier === 'large') || availableModels.find((model) => model.tier === 'medium') || availableModels[0];
+      const supportedPrecision = smallModel?.precisions?.includes(simPrecision) ? simPrecision : (smallModel?.precisions?.[0] || 'fp8');
+      const input = simPrompt.trim();
+      const plan = [
+        { node_id: 'sentiment-slm', task: `Classify sentiment and extract key facts: ${input}`, input, task_category: 'classification', model_id: smallModel?.id, precision: supportedPrecision },
+        { node_id: 'customer-research', task: `Summarize relevant customer context: ${input}`, input, task_category: 'extraction', model_id: smallModel?.id, precision: supportedPrecision },
+        { node_id: 'risk-review', task: `Check policy, privacy, and escalation risks: ${input}`, input, task_category: 'classification', model_id: smallModel?.id, precision: supportedPrecision },
+        { node_id: 'quality-review', task: `Assess confidence and recommend a safe follow-up: ${input}`, input, task_category: 'reasoning', model_id: qualityModel?.id, precision: qualityModel?.precisions?.includes('fp16') ? 'fp16' : (qualityModel?.precisions?.[0] || supportedPrecision), depends_on: ['sentiment-slm', 'customer-research', 'risk-review'] },
+        { node_id: 'orchestrator-synthesis', task: 'Combine worker results into a concise final recommendation.', input, task_category: 'generation', model_id: qualityModel?.id, precision: qualityModel?.precisions?.[0] || supportedPrecision, depends_on: ['sentiment-slm', 'customer-research', 'risk-review'] },
+      ];
+      const data = await api('/v1/request', { method: 'POST', body: JSON.stringify({
+        input, task_category: 'classification', privacy: simPrivacy, strategy: 'confidence_based',
+        metadata: { confidence: simConfidence, orchestration_pattern: 'hierarchical', simulation: 'full_project', subtasks: plan },
+      }) });
+      const configured = { privacy: simPrivacy, confidence: simConfidence, confidence_escalation_threshold: 0.65, precision: supportedPrecision, small_model: smallModel?.id || 'runtime default', quality_model: qualityModel?.id || 'runtime default', checkpoints };
+      setResult({ kind: 'project-simulation', data, configured });
+      refresh();
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); setSimRunningStep(-1); }
+  };
+
   const simulateComparison = async () => {
     setLoading(true); setError(''); setResult(null);
     try {
@@ -168,7 +212,7 @@ function App() {
         <div className="workspace-switch"><span className="workspace-dot">R</span><span><b>Research workspace</b><small>Local environment</small></span><ChevronDown size={15} /></div>
         <div className="side-label">WORKSPACE</div>
         <button className={`nav-item ${page === 'overview' ? 'active' : ''}`} onClick={() => navTo('overview')}><BarChart3 size={17} /> Overview</button>
-        <button className={`nav-item ${page === 'agent-eval' ? 'active' : ''}`} onClick={() => navTo('agent-eval', 'agent-eval')}><FlaskConical size={17} /> Agent evaluation <span className="nav-count">3</span></button>
+        <button className={`nav-item ${page === 'simulation' ? 'active' : ''}`} onClick={() => navTo('simulation')}><CirclePlay size={17} /> Simulation <span className="nav-count">7</span></button>
         <div className="side-label side-label-gap">RESEARCH TRACKS</div>
         {TRACKS.map((item) => <button key={item.id} className={`nav-item ${page === 'track' && track === item.id ? 'active' : ''}`} onClick={() => navTo('track', item.id)}><item.icon size={17} /> <span>{item.name}</span></button>)}
         <div className="sidebar-spacer" />
@@ -179,13 +223,14 @@ function App() {
       <main className="main-panel">
         <header className="topbar">
           <button className="icon-button mobile-menu" onClick={() => setMobileMenu(true)}><Menu size={20} /></button>
-          <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><b>{page === 'overview' ? 'Overview' : page === 'agent-eval' ? 'Agent evaluation' : activeTrack.name}</b></div>
+          <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={14} /><b>{page === 'overview' ? 'Overview' : page === 'agent-eval' ? 'Agent evaluation' : page === 'simulation' ? 'Simulation' : activeTrack.name}</b></div>
           <div className="topbar-actions"><div className={`connection-pill ${online ? 'connected' : 'disconnected'}`}><span className="status-dot" />{online ? 'Backend live' : 'Backend offline'}</div><button className="icon-button" title="Refresh data" onClick={refresh}><RefreshCw size={16} /></button><button className="icon-button" title="Help"><CircleHelp size={17} /></button><button className="icon-button" title="Notifications"><Bell size={17} /><i /></button></div>
         </header>
 
         {error && <div className="global-error"><Radio size={16} /><span>{online ? error : 'Backend is offline. Start FastAPI on port 8000 to run live simulations.'}</span><button onClick={() => setError('')}>Dismiss</button></div>}
 
         {page === 'overview' && <Overview metrics={metrics} chartData={chartData} runs={runs} online={online} onSelect={navTo} />}
+        {page === 'simulation' && <SimulationView prompt={simPrompt} setPrompt={setSimPrompt} privacy={simPrivacy} setPrivacy={setSimPrivacy} precision={simPrecision} setPrecision={setSimPrecision} confidence={simConfidence} setConfidence={setSimConfidence} models={availableModels} loading={loading} runningStep={simRunningStep} online={online} error={error} result={result?.kind === 'project-simulation' ? result : null} onRun={simulateProject} />}
         {page === 'track' && <TrackView track={activeTrack} prompt={prompt} setPrompt={setPrompt} category={category} setCategory={setCategory} confidence={confidence} setConfidence={setConfidence} models={availableModels} selectedModel={selectedModel} setSelectedModel={setSelectedModel} activeModel={activeModel} precision={precision} setPrecision={setPrecision} privacy={privacy} setPrivacy={setPrivacy} pattern={pattern} setPattern={setPattern} loading={loading} online={online} result={result} error={error} onRun={simulate} onCompare={simulateComparison} runtime={runtime} />}
         {page === 'agent-eval' && <EvalView suites={suites} suiteId={suiteId} setSuiteId={setSuiteId} selectedSuite={selectedSuite} agentVersion={agentVersion} setAgentVersion={setAgentVersion} runs={runs} loading={loading} result={result} error={error} onRun={simulate} />}
         <footer className="page-footer"><span>AGENTEVAL ENTERPRISE <i>·</i> LOCAL DEMO</span><span>Mock mode is clearly labeled · No external model calls by default</span></footer>
@@ -200,7 +245,7 @@ function Overview({ metrics, chartData, runs, online, onSelect }) {
   const cost = metrics?.cost_usd ?? 0;
   const savings = metrics?.savings_pct ?? 0;
   return <div className="content-page">
-    <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> AI SYSTEMS CONTROL ROOM</div><h1>Evaluate. Route. Improve.</h1><p>Simulate agent quality, model efficiency, and deployment strategies in one workspace.</p></div><button className="button button-primary" onClick={() => onSelect('agent-eval', 'agent-eval')}><CirclePlay size={17} /> Run an evaluation <ArrowRight size={16} /></button></section>
+    <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> AI SYSTEMS CONTROL ROOM</div><h1>Evaluate. Route. Improve.</h1><p>Simulate agent quality, model efficiency, and deployment strategies in one workspace.</p></div><button className="button button-primary" onClick={() => onSelect('simulation')}><CirclePlay size={17} /> Run a simulation <ArrowRight size={16} /></button></section>
     <div className="notice-banner"><span className="notice-icon"><Sparkles size={17} /></span><div><b>Demo environment ready</b><p>{online ? 'Connected to the local API. Simulations will create real traces and persist evaluation runs.' : 'Start the FastAPI backend to connect live simulations. The default adapters use mock models and need no keys.'}</p></div><span className={`notice-state ${online ? 'live' : ''}`}><i />{online ? 'LIVE' : 'LOCAL'}</span></div>
     <div className="metric-grid">
       <MetricCard icon={Activity} tint="blue" label="Requests evaluated" value={requests.toLocaleString()} delta="Across all task types" trend="neutral" />
@@ -211,7 +256,7 @@ function Overview({ metrics, chartData, runs, online, onSelect }) {
     <div className="section-heading"><div><div className="eyebrow">SIMULATION WORKBENCH</div><h2>Choose a research track</h2><p>Each module is interactive and leaves an inspectable trace.</p></div><span className="section-extra"><span className="status-dot online" /> 7 tracks available</span></div>
     <div className="track-grid">{TRACKS.map((item, index) => <button key={item.id} className="track-card" onClick={() => onSelect('track', item.id)}><div className="track-card-top"><IconMark icon={item.icon} tint={item.tint} /><span className="track-index">0{index + 1}</span></div><h3>{item.name}</h3><p>{item.short}</p><div className="track-card-foot"><span className="track-chip">{item.chip}</span><span className="round-arrow"><ArrowRight size={15} /></span></div></button>)}</div>
     <div className="lower-grid"><section className="panel chart-panel"><div className="panel-heading"><div><h3>Evaluation trend</h3><p>Success rate across recent evaluation runs</p></div><span className="select-pill">Recent runs <ChevronDown size={13} /></span></div>{chartData.length ? <div className="chart-wrap"><SuccessChart data={chartData} /></div> : <div className="empty-chart"><BarChart3 size={22} /><span>Run an evaluation to populate this chart.</span></div>}</section>
-      <section className="panel recent-panel"><div className="panel-heading"><div><h3>Recent evaluation runs</h3><p>Latest suite activity</p></div><button className="text-button" onClick={() => onSelect('agent-eval', 'agent-eval')}>View all <ArrowRight size={14} /></button></div>{runs.length ? <div className="recent-list">{[...runs].slice(-4).reverse().map((run) => <div className="recent-row" key={run.run_id}><span className={`run-status ${run.summary?.failed ? 'warn' : ''}`}><Check size={13} /></span><div className="recent-main"><b>{run.suite}</b><small>{run.agent_version} · {new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></div><div className="recent-score"><b>{Math.round((run.summary?.success_rate || 0) * 100)}%</b><small>success</small></div></div>)}</div> : <div className="empty-recent"><span className="empty-icon"><FlaskConical size={18} /></span><b>No runs yet</b><span>Start an evaluation to see release history here.</span><button className="text-button" onClick={() => onSelect('agent-eval', 'agent-eval')}>Open eval studio <ArrowRight size={14} /></button></div>}</section></div>
+      <section className="panel recent-panel"><div className="panel-heading"><div><h3>Recent evaluation runs</h3><p>Latest suite activity</p></div><button className="text-button" onClick={() => onSelect('simulation')}>Open simulation <ArrowRight size={14} /></button></div>{runs.length ? <div className="recent-list">{[...runs].slice(-4).reverse().map((run) => <div className="recent-row" key={run.run_id}><span className={`run-status ${run.summary?.failed ? 'warn' : ''}`}><Check size={13} /></span><div className="recent-main"><b>{run.suite}</b><small>{run.agent_version} · {new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></div><div className="recent-score"><b>{Math.round((run.summary?.success_rate || 0) * 100)}%</b><small>success</small></div></div>)}</div> : <div className="empty-recent"><span className="empty-icon"><FlaskConical size={18} /></span><b>No runs yet</b><span>Start an evaluation to see release history here.</span><button className="text-button" onClick={() => onSelect('simulation')}>Open simulation <ArrowRight size={14} /></button></div>}</section></div>
   </div>;
 }
 
@@ -232,6 +277,69 @@ function SuccessChart({ data }) {
     <path d={line} fill="none" stroke="#5879ef" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     {data.map((point, index) => <g key={point.name}><circle cx={xAt(index)} cy={yAt(point.success)} r="4" fill="#fff" stroke="#5879ef" strokeWidth="2"><title>{`${point.name}: ${point.success}%`}</title></circle><text x={xAt(index)} y={height - 7} textAnchor="middle" fill="#8b95a7" fontSize="9">{point.name}</text></g>)}
   </svg>;
+}
+
+const PROJECT_CAPABILITIES = [
+  { id: 'jev', name: 'Jev decisioning', detail: 'Structured rules short-circuit work that does not need a model.', icon: Zap, tint: 'violet' },
+  { id: 'slm', name: 'SLM for lightweight work', detail: 'A small model handles classification and extraction tasks.', icon: BrainCircuit, tint: 'blue' },
+  { id: 'edge', name: 'Edge AI placement', detail: 'Privacy policy checks local-device eligibility.', icon: HardDrive, tint: 'teal' },
+  { id: 'switching', name: 'Automatic model switching', detail: 'Confidence and task quality choose the model tier.', icon: GitCompareArrows, tint: 'amber' },
+  { id: 'parallel', name: 'Task parallelism', detail: 'Independent workers run together before synthesis.', icon: Workflow, tint: 'blue' },
+  { id: 'orchestration', name: 'Orchestration agent', detail: 'A coordinating step combines the worker outputs.', icon: Network, tint: 'violet' },
+  { id: 'quantization', name: 'Quantization', detail: 'Requested precision is attached to each model task.', icon: Cpu, tint: 'teal' },
+];
+
+function SimulationView({ prompt, setPrompt, privacy, setPrivacy, precision, setPrecision, confidence, setConfidence, models, loading, runningStep, online, error, result, onRun }) {
+  const precisions = [...new Set(models.flatMap((model) => model.precisions || []))];
+  const trace = result?.data?.trace || {};
+  const routes = trace.events?.find((event) => event.routes)?.routes || {};
+  const nodes = trace.nodes || [];
+  const steps = PROJECT_CAPABILITIES.map((capability, index) => {
+    const node = index === 1 ? nodes.find((item) => item.node_id === 'sentiment-slm') : index === 2 ? nodes.find((item) => item.is_edge) : index === 3 ? nodes.find((item) => item.node_id === 'quality-review') : index === 4 ? nodes.find((item) => ['sentiment-slm', 'customer-research', 'risk-review'].includes(item.node_id)) : index === 5 ? nodes.find((item) => item.node_id === 'orchestrator-synthesis') : null;
+    const route = node ? routes[node.node_id] : null;
+    let observation = 'Configured for this run';
+    if (capability.id === 'jev') observation = trace.jev_decisions && Object.keys(trace.jev_decisions).length ? `${Object.keys(trace.jev_decisions).length} structured decision(s) · ${trace.routing_path || 'rule path evaluated'}` : 'Jev route evaluated · no structured match, continuing to model plan';
+    if (capability.id === 'slm') observation = node ? `${node.model_id} · ${node.provider} · ${node.tier} tier` : 'Small-model work included in execution plan';
+    if (capability.id === 'edge') observation = privacy === 'strict' ? (node?.is_edge ? `Placed on edge · ${node.model_id}` : 'Strict privacy checked · runtime has no eligible local model, so the router applied its configured placement') : 'Standard privacy selected · edge placement remains available';
+    if (capability.id === 'switching') observation = route ? `${route.strategy || 'router'} selected ${route.model_id || node?.model_id}${route.rationale ? ` · ${route.rationale}` : ''}` : `Confidence ${Math.round(confidence * 100)}% sent to router · confidence below 65% can trigger quality escalation`;
+    if (capability.id === 'parallel') observation = trace.critical_path_length ? `${nodes.length} nodes · ${fmtMs(trace.critical_path_latency_ms)} critical path · ${Number(trace.parallel_efficiency || 0).toFixed(2)}× efficiency` : 'Three independent worker nodes precede the join';
+    if (capability.id === 'orchestration') observation = node ? `Synthesis executed by ${node.model_id} · ${node.provider}` : 'Hierarchical plan: worker findings join at synthesis';
+    if (capability.id === 'quantization') observation = nodes.length ? `Requested ${nodes[0].precision_requested || result.configured.precision} · ${nodes.some((item) => item.precision_verified) ? 'artifact verification passed' : 'runtime records the request; artifact precision is not verified'}` : `Requested ${result?.configured?.precision || precision.toUpperCase()}`;
+    return { ...capability, observation, done: Boolean(result), active: loading && runningStep === index };
+  });
+  return <div className="content-page simulation-page">
+    <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> END-TO-END PROJECT WALKTHROUGH</div><h1>Simulation</h1><p>Run one customer workflow and watch all seven AI optimization capabilities participate.</p></div><span className={`mock-badge ${online ? '' : 'offline-badge'}`}><span className={`status-dot ${online ? 'online' : ''}`} />{online ? 'LIVE BACKEND' : 'LOCAL DEMO · BACKEND NEEDED'}</span></div>
+    <div className="simulation-layout">
+      <section className="panel config-panel simulation-config"><div className="panel-heading"><div><h3>Project scenario</h3><p>Configure the request and runtime guardrails</p></div><IconMark icon={Sparkles} tint="violet" /></div>
+        <Field label="Customer workflow request"><textarea rows="5" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Describe the project request to simulate" /></Field>
+        <div className="simulation-fields"><Field label="Privacy policy"><select value={privacy} onChange={(event) => setPrivacy(event.target.value)}><option value="strict">Strict · prefer on-device inference</option><option value="standard">Standard · cloud placement allowed</option></select></Field>
+          <Field label="Small-model precision"><select value={precision} onChange={(event) => setPrecision(event.target.value)}>{(precisions.length ? precisions : ['fp8', 'fp16', 'int4']).map((item) => <option key={item} value={item}>{item.toUpperCase()}</option>)}</select></Field></div>
+        <Field label={`Router confidence · ${Math.round(confidence * 100)}%`}><input type="range" className="range-input" min="0.5" max="0.99" step="0.01" value={confidence} onChange={(event) => setConfidence(Number(event.target.value))} /><div className="range-hints"><span>Below 65%: quality escalation</span><span>At / above: cost optimized</span></div></Field>
+        <div className="info-callout"><Workflow size={15} /><span>One request builds a hierarchical workflow: Jev gate → parallel workers → confidence review and final synthesis. Backend traces provide the models, latency, cost and placement shown below.</span></div>
+        <button className="button button-primary run-button full" disabled={!online || loading || !prompt.trim()} onClick={onRun}>{loading ? <><LoaderCircle className="spin" size={16} /> Running capability {Math.min(runningStep + 1, 7)} of 7…</> : <><Play size={15} fill="currentColor" /> Run full project simulation</>}</button>
+        {!online && <p className="simulation-hint">Start the FastAPI backend on port 8000 to run the live workflow. The UI stays in setup mode until connected.</p>}
+        {error && <div className="inline-error compact">{error}</div>}
+      </section>
+      <section className="panel capabilities-panel"><div className="panel-heading"><div><h3>Seven capabilities in this run</h3><p>{result ? 'Observed details are based on the execution trace.' : loading ? 'Workflow is progressing through its decision checkpoints.' : 'The complete workflow is ready to run.'}</p></div><span className="capability-count">{result ? '7 / 7' : loading ? `${Math.min(runningStep + 1, 7)} / 7` : '0 / 7'}</span></div>
+        <div className="capability-list">{steps.map((step, index) => <article className={`capability-row ${step.active ? 'running' : ''} ${step.done ? 'complete' : ''}`} key={step.id}><div className="capability-icon"><IconMark icon={step.icon} tint={step.tint} size={27} /></div><div className="capability-copy"><div className="capability-title"><span className="capability-index">0{index + 1}</span><b>{step.name}</b><span className={`capability-state ${step.done ? 'observed' : step.active ? 'active' : ''}`}>{step.done ? 'OBSERVED' : step.active ? 'RUNNING' : 'READY'}</span></div><p>{step.detail}</p>{(step.done || step.active) && <small>{step.observation}</small>}</div></article>)}</div>
+      </section>
+    </div>
+    {result && <ProjectSimulationResult result={result} />}
+  </div>;
+}
+
+function ProjectSimulationResult({ result }) {
+  const data = result.data;
+  const trace = data.trace || {};
+  const nodes = trace.nodes || [];
+  const totalCost = nodes.reduce((sum, node) => sum + Number(node.cost_usd || 0), 0);
+  const resultText = typeof data.result === 'string' ? data.result : Object.entries(data.result || {}).map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`).join('\n\n');
+  return <section className="panel result-panel project-result"><div className="panel-heading"><div><div className="eyebrow">PROJECT RUN COMPLETE</div><h3>Workflow outcome</h3><p>{trace.routing_path || 'Model router'} · request {data.request_id?.slice(0, 8)}</p></div><span className="success-badge"><span className="status-dot online" /> COMPLETE</span></div>
+    <div className="result-metrics"><span><small>Workflow nodes</small><b>{nodes.length}</b></span><span><small>Parallel efficiency</small><b>{Number(trace.parallel_efficiency || 0).toFixed(2)}×</b></span><span><small>Critical path</small><b>{fmtMs(trace.critical_path_latency_ms)}</b></span><span><small>Total model cost</small><b>{fmtCurrency(totalCost)}</b></span><span><small>Model escalations</small><b>{trace.escalation_count || 0}</b></span></div>
+    <div className="project-node-list"><div className="project-node-head"><h4>What ran</h4><small>Actual runtime decisions</small></div>{nodes.map((node) => <div className="project-node" key={node.node_id}><span className="case-mark"><Check size={12} /></span><div><b>{node.node_id}</b><small>{node.model_id} · {node.provider} · {node.tier} · {String(node.output ?? '').slice(0, 180)}</small></div><span className="project-node-metrics">{fmtMs(node.latency_ms)}<small>{fmtCurrency(node.cost_usd)}</small></span></div>)}</div>
+    <div className="result-output"><span className="output-label">FINAL PROJECT RESULT</span><p>{resultText || 'Workflow finished without a textual result.'}</p></div>
+    <details className="trace-details"><summary>Inspect complete trace and simulation configuration <ChevronDown size={14} /></summary><pre>{JSON.stringify({ configuration: result.configured, trace }, null, 2)}</pre></details>
+  </section>;
 }
 
 function TrackView(props) {
