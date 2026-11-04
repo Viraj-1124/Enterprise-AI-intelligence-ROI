@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
@@ -17,6 +17,6 @@ class Evaluator:
         }
         return EvaluationRun(
             mode="benchmark",
-            completed_at=datetime.now(UTC),
+            completed_at=datetime.now(timezone.utc),
             results={"scores": scores, "accuracy": sum(scores.values()) / max(1, len(scores))},
         )

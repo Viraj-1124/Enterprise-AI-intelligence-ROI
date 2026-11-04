@@ -1,0 +1,27 @@
+name: Agent evaluation gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Run core checks
+        run: |
+          python -m pytest
+          python -m ruff check app tests
+      - name: Run customer support quality gate
+        run: python scripts/agent_eval.py run config/suites/customer_support.yaml --min-success 0.8 --json agent-eval-results.json --html agent-eval-report.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-eval-report
+          path: |
+            agent-eval-results.json
+            agent-eval-report.html

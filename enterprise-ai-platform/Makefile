@@ -1,8 +1,14 @@
-.PHONY: install dev test lint seed eval up down demo-escalate demo-jev-routing demo-harness test-real-ollama
+.PHONY: install dev frontend-install frontend-dev frontend-build test lint seed eval up down demo-escalate demo-jev-routing demo-harness test-real-ollama
 install:
 	uv sync --extra dev
 dev:
 	uv run uvicorn app.main:app --reload
+frontend-install:
+	npm --prefix frontend install
+frontend-dev:
+	npm --prefix frontend run dev
+frontend-build:
+	npm --prefix frontend run build
 test:
 	uv run pytest
 lint:

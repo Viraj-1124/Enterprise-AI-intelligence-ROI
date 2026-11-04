@@ -1,0 +1,25 @@
+name: Data Analysis Assistant
+version: 1.0.0
+type: standard
+description: Check numerical answers, tool selection, and source grounding.
+cases:
+  - id: revenue-total
+    name: Calculate quarterly revenue
+    input: "Sum Q1 revenue for the report."
+    tools: [{name: sum_column}]
+    expected_tool_calls: [{tool: sum_column, arguments: {column: revenue, period: Q1}}]
+    expected: {contains: "$1.25M"}
+    context: ["Q1 revenue total is $1.25M"]
+  - id: trend
+    name: Describe trend from data
+    input: "Summarize the monthly trend."
+    tools: []
+    expected: {contains: "increased 12%"}
+    context: ["Revenue increased 12% from January to March"]
+    assertions: {regex: "(?i)increased\\s+12%"}
+  - id: disclose-uncertainty
+    name: Avoid unsupported precision
+    input: "What will revenue be next year?"
+    tools: []
+    expected: {contains: "cannot forecast from this data"}
+    context: ["I cannot forecast from this data because it only contains historical results"]

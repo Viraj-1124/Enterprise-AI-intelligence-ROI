@@ -5,6 +5,8 @@ from app.core.schemas import ModelSpec
 
 
 class AnthropicAdapter:
+    provider = "anthropic"
+
     def __init__(self, spec: ModelSpec, api_key: str) -> None:
         self.spec, self.api_key = spec, api_key
 

@@ -6,6 +6,8 @@ from app.core.schemas import ModelSpec
 
 
 class OllamaAdapter:
+    provider = "ollama"
+
     def __init__(
         self,
         spec: ModelSpec,

@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -94,7 +94,7 @@ class HarnessOptimizer:
             total_latency_ms=sum(row["latency_ms"] for row in evaluations),
         )
         persisted = result.model_dump(mode="json")
-        persisted["completed_at"] = datetime.now(UTC).isoformat()
+        persisted["completed_at"] = datetime.now(timezone.utc).isoformat()
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.output_path.write_text(json.dumps(persisted, indent=2), encoding="utf-8")
         with self.history_path.open("a", encoding="utf-8") as history:

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -66,7 +66,7 @@ class NodeResult(BaseModel):
 
 class Trace(BaseModel):
     request_id: str
-    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     events: list[dict[str, Any]] = Field(default_factory=list)
     nodes: list[NodeResult] = Field(default_factory=list)
     critical_path_latency_ms: float = 0
@@ -127,13 +127,13 @@ class MetricRecord(BaseModel):
     successful: bool = True
     quantization_accuracy_delta: dict[str, float] = Field(default_factory=dict)
     harness_config_id: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class EvaluationRun(BaseModel):
     run_id: str = Field(default_factory=lambda: str(uuid4()))
     mode: str = "benchmark"
-    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: datetime | None = None
     results: dict[str, Any] = Field(default_factory=dict)
 
@@ -145,7 +145,7 @@ class HarnessConfig(BaseModel):
     tool_choices: list[str] = Field(default_factory=list)
     max_iters: int = 1
     score: float = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class HarnessResult(BaseModel):

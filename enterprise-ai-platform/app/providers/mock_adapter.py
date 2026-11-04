@@ -18,6 +18,8 @@ def reset_flaky_state() -> None:
 
 
 class MockAdapter:
+    provider = "mock"
+
     def __init__(
         self,
         spec: ModelSpec,

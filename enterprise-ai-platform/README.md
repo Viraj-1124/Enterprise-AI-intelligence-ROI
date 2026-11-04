@@ -1,6 +1,40 @@
-# Enterprise AI Intelligence & ROI Platform
+# AgentEval Enterprise · Enterprise AI Intelligence & ROI Platform
 
 Mock-first async FastAPI gateway, YAML model registry, pluggable routers, DAG execution, request metrics, ROI summaries, and Streamlit charts.
+
+The workspace also ships **AgentEval**, a vendor-neutral agent evaluation harness with YAML suites, transcript adapters, auditable quality and policy judgments, release gates, run history, JSON/HTML reports, and an interactive simulator.
+
+The existing ROI dashboard also includes an **AI Workstreams Lab** page for the seven research tracks: Jev, SLM/LLM routing, edge placement, model switching, parallelism, orchestration patterns, and quantization. It separates local mock simulations and model-catalog estimates from real-device/model benchmarks. See [docs/technical-evaluations.md](docs/technical-evaluations.md) for the implementation boundaries and run steps.
+
+## Launch the React demo frontend
+
+From this directory, start the API in one terminal:
+
+```powershell
+uv run uvicorn app.main:app --reload
+```
+
+Then start the React app in another terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL Vite prints (normally `http://localhost:5173`). The control room connects to FastAPI through the Vite development proxy. Use the left navigation to simulate all seven research tracks or open **Agent evaluation**. Choose `demo-v1` to see passing results and `demo-regressed` to show a regression. The React frontend is the primary demo interface. The previous Streamlit dashboards remain available, but are no longer the recommended demo UI.
+
+## Run suites from the CLI
+
+```powershell
+uv run python scripts/agent_eval.py run config/suites/customer_support.yaml --agent-version release-42 --min-success 0.8 --max-cost 0.02
+uv run python scripts/agent_eval.py run config/suites/data_analysis.yaml
+uv run python scripts/agent_eval.py run config/suites/policy_compliance.yaml
+```
+
+Each run writes `agent-eval-results.json`, `agent-eval-report.html`, and an append-only `.agent_eval/runs.jsonl` history. The CLI returns nonzero when the configured success or cost gate fails. View the report in a browser or inspect the JSON in downstream CI. For suite schema, adapters, metrics, judges, and extension points, see [docs/suite-format.md](docs/suite-format.md). The planned and currently unmeasured technology experiments are documented in [docs/technical-evaluations.md](docs/technical-evaluations.md).
+
+Integrate an agent by implementing `async run(prompt, tools, **kwargs) -> AgentTranscript` or wrapping a sync/async callable with `CallableAdapter`. Optional LangChain Runnable and CrewAI bridges are included without requiring those frameworks for local use. LLM judging is opt-in through a caller-configured judge; default suite execution uses deterministic checks and records rationales.
 
 ## Run it
 

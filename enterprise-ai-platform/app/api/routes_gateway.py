@@ -10,7 +10,7 @@ from app.core.schemas import MetricRecord, Node, Plan, Request, RequestResponse,
 from app.edge.edge_router import EdgeRouter
 from app.execution.dag_scheduler import DAGScheduler
 from app.execution.task_executor import TaskExecutor
-from app.routing.jev_mock import JevMockBackend
+from app.routing.jev_mock import JevHTTPBackend, JevMockBackend
 from app.routing.rule_engine import RuleEngine
 from app.settings import get_settings
 
@@ -31,7 +31,8 @@ async def submit_request(
     rule_field = (
         "email" if body.task_category == TaskCategory.EXTRACTION and "@" in body.input else None
     )
-    jev = JevMockBackend()
+    settings = get_settings()
+    jev = JevHTTPBackend(settings.jev_base_url) if settings.jev_base_url else JevMockBackend()
     jev_decisions: dict[str, dict[str, object]] = {}
     jev_error: str | None = None
     routing_path = "strategy"
@@ -133,6 +134,8 @@ async def submit_request(
             node.escalation_reason = placement.escalation_reason
             if placement.target == "edge":
                 node.model_id = local_model.id
+                if node.precision not in local_model.precisions:
+                    node.precision = local_model.precisions[0]
             elif placement.escalation_reason and get_settings().model_provider.lower() == "ollama":
                 raise EdgeUnavailable(
                     "strict reasoning or generation requires a cloud provider, but only Ollama is configured"

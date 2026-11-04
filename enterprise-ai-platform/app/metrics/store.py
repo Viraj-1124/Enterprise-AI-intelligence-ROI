@@ -39,12 +39,12 @@ class MetricStore:
         return [MetricRecord.model_validate_json(row[0]) for row in rows]
 
     def write_error(self, error: str, detail: str, status_code: int = 503) -> None:
-        from datetime import UTC, datetime
+        from datetime import datetime, timezone
 
         with sqlite3.connect(self.path) as db:
             db.execute(
                 "INSERT INTO provider_errors (created_at, status_code, error, detail) VALUES (?, ?, ?, ?)",
-                (datetime.now(UTC).isoformat(), status_code, error, detail),
+                (datetime.now(timezone.utc).isoformat(), status_code, error, detail),
             )
 
     def recent_errors(self, limit: int = 5) -> list[dict[str, object]]:

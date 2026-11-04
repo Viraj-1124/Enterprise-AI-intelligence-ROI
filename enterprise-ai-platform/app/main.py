@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import routes_eval, routes_gateway, routes_metrics, routes_models
+from app.api import routes_agent_eval, routes_eval, routes_gateway, routes_metrics, routes_models
 from app.api.deps import get_registry, get_store
 from app.core.errors import EdgeUnavailable, OllamaUnreachable, TaskExecutionFailed
 from app.core.logging import get_logger
@@ -27,6 +27,7 @@ app.include_router(routes_gateway.router)
 app.include_router(routes_metrics.router)
 app.include_router(routes_models.router)
 app.include_router(routes_eval.router)
+app.include_router(routes_agent_eval.router)
 
 
 @app.exception_handler(OllamaUnreachable)

@@ -35,6 +35,7 @@ class TaskExecutor:
         while True:
             attempts += 1
             adapter = self.registry.adapter(spec.id)
+            actual_provider = getattr(adapter, "provider", spec.provider)
             start = time.perf_counter()
             try:
                 output = await adapter.generate(
@@ -49,14 +50,14 @@ class TaskExecutor:
                 precision_verified = False
                 precision_note = None
                 observed_artifact = None
-                if spec.provider == "ollama" and spec.actual_precision != "unknown":
+                if actual_provider == "ollama" and spec.actual_precision != "unknown":
                     observed_artifact = spec.actual_precision
                     precision_verified = spec.actual_precision.lower() == precision.value.lower()
                     if not precision_verified:
                         precision_note = (
                             f"requested {precision.value}; observed {spec.actual_precision}"
                         )
-                elif spec.provider == "mock":
+                elif actual_provider == "mock":
                     precision_note = "mock adapter — precision is a routing label only"
                 else:
                     precision_note = "adapter does not expose precision; treat as unverified"
@@ -71,9 +72,9 @@ class TaskExecutor:
                     cost_usd=cost,
                     latency_ms=latency,
                     model_id=spec.id,
-                    provider=spec.provider,
+                    provider=actual_provider,
                     tier=spec.tier,
-                    is_edge=node.is_edge or spec.provider == "ollama",
+                    is_edge=node.is_edge or actual_provider == "ollama",
                     edge_rationale=node.edge_rationale,
                     escalation_reason=node.escalation_reason,
                     precision=precision,

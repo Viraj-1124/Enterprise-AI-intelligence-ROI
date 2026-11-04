@@ -3,3 +3,5 @@ enterprise-ai-platform/.venv/
 enterprise-ai-platform/.pytest_cache/
 enterprise-ai-platform/.ruff_cache/
 enterprise-ai-platform/*.db
+.env*
+.env
