@@ -22,23 +22,23 @@ const api = async (path, init = {}) => {
 };
 
 const TRACKS = [
-  { id: 'jev', name: 'Jev · no-LLM work', short: 'Route structured work before it reaches a model.', icon: Zap, tint: 'violet', chip: '0 model calls', group: 'Efficiency' },
-  { id: 'slm', name: 'SLM vs LLM', short: 'Explore small-model quality and cost trade-offs.', icon: BrainCircuit, tint: 'blue', chip: 'Model routing', group: 'Efficiency' },
-  { id: 'edge', name: 'Edge AI', short: 'Place privacy-sensitive work on local devices.', icon: HardDrive, tint: 'teal', chip: 'Local inference', group: 'Deployment' },
-  { id: 'switching', name: 'Automatic switching', short: 'Route or escalate based on confidence and task.', icon: GitCompareArrows, tint: 'amber', chip: 'Adaptive routing', group: 'Reliability' },
-  { id: 'parallel', name: 'Task parallelism', short: 'Compare sequential work with concurrent DAG execution.', icon: Workflow, tint: 'blue', chip: 'DAG scheduler', group: 'Orchestration' },
-  { id: 'orchestration', name: 'Orchestration agent', short: 'Simulate hierarchical, pipeline and swarm patterns.', icon: Network, tint: 'violet', chip: 'Multi-agent', group: 'Orchestration' },
-  { id: 'quantization', name: 'Quantization', short: 'Inspect precision labels, quality deltas and cost.', icon: Cpu, tint: 'teal', chip: 'FP8 · INT4 · FP16', group: 'Efficiency' },
+  { id: 'jev', name: 'Jev · no-LLM work', short: 'Decide whether a deterministic business rule can resolve a request.', icon: Zap, tint: 'violet', chip: 'Policy decisions', group: 'Efficiency' },
+  { id: 'slm', name: 'SLM vs LLM', short: 'Classify support tickets and route routine work to a small model.', icon: BrainCircuit, tint: 'blue', chip: 'Ticket triage', group: 'Efficiency' },
+  { id: 'edge', name: 'Edge AI', short: 'Redact private contact details before data leaves the device.', icon: HardDrive, tint: 'teal', chip: 'Local redaction', group: 'Deployment' },
+  { id: 'switching', name: 'Automatic switching', short: 'Move a severity assessment between model tiers as confidence changes.', icon: GitCompareArrows, tint: 'amber', chip: 'Tier selection', group: 'Reliability' },
+  { id: 'parallel', name: 'Task parallelism', short: 'Split a launch plan across market, budget, and risk agents.', icon: Workflow, tint: 'blue', chip: 'Launch planning', group: 'Orchestration' },
+  { id: 'orchestration', name: 'Orchestration agent', short: 'Coordinate diagnosis, mitigation, and updates for an IT incident.', icon: Network, tint: 'violet', chip: 'Incident response', group: 'Orchestration' },
+  { id: 'quantization', name: 'Quantization', short: 'Summarize a field report while comparing model precision settings.', icon: Cpu, tint: 'teal', chip: 'Report compression', group: 'Efficiency' },
 ];
 
 const DEFAULT_PROMPTS = {
-  jev: 'I was charged twice for my subscription. Please refund.',
-  slm: 'Classify this customer note: the delivery was excellent.',
-  edge: 'Classify this private customer message without sending it to the cloud.',
-  switching: 'Compare the risk and recommend the safest option.',
-  parallel: 'Prepare a short launch-readiness summary from research, risk, and cost checks.',
-  orchestration: 'Research the request, check risk, and prepare a combined answer.',
-  quantization: 'Classify this review: the service was excellent.',
+  jev: 'A customer was charged twice for the annual plan and is requesting a refund. Decide whether the billing rule applies.',
+  slm: 'Ticket: The employee cannot sign in to the VPN after yesterday’s update. Route this ticket to the correct support queue.',
+  edge: 'Private note: Contact Jamie Rivera at jamie.rivera@example.com or 415-555-0100 about case 48291. Redact contact details before sharing.',
+  switching: 'Classify incident severity: the authentication service is returning errors for many users during month-end close.',
+  parallel: 'Launch a 3-month pilot for a mobile appointment-booking service. Budget: $24,000. Expected monthly bookings: 600. List assumptions and milestones.',
+  orchestration: 'Production incident: the authentication API started returning 500 errors 10 minutes after deployment. Users cannot sign in. Coordinate diagnosis, mitigation, and a customer update.',
+  quantization: 'Summarize this field report for an on-device operations brief: battery life improved 18%, offline sync failed in 2 of 40 trials, and the team recommends a staged rollout after the sync fix.',
 };
 
 const fmtCurrency = (value = 0) => `$${Number(value || 0).toFixed(4)}`;
@@ -118,6 +118,7 @@ function App() {
     setResult(null);
     setError('');
     if (chosenTrack in DEFAULT_PROMPTS) setPrompt(DEFAULT_PROMPTS[chosenTrack]);
+    setCategory(({ slm: 'classification', edge: 'extraction', switching: 'classification', quantization: 'generation' })[chosenTrack] || 'classification');
     setMobileMenu(false);
   };
 
@@ -370,17 +371,17 @@ function ProjectSimulationResult({ result }) {
 function TrackView(props) {
   const { track, prompt, setPrompt, category, setCategory, confidence, setConfidence, models, selectedModel, setSelectedModel, activeModel, precision, setPrecision, privacy, setPrivacy, pattern, setPattern, loading, online, result, error, onRun, onCompare, runtime } = props;
   const active = track.id;
-  const runLabel = active === 'parallel' ? 'Run parallel DAG' : active === 'orchestration' ? 'Run orchestration plan' : active === 'switching' ? 'Simulate model routing' : 'Run simulation';
+  const runLabel = ({ jev: 'Evaluate business decision', slm: 'Classify support ticket', edge: 'Redact private note', switching: 'Route severity task', parallel: 'Run launch planning DAG', orchestration: 'Run incident response', quantization: 'Summarize report' })[active] || 'Run simulation';
   return <div className="content-page track-page">
     <div className="track-hero"><div><div className="eyebrow"><span className="eyebrow-line" /> {track.group.toUpperCase()} · SIMULATION</div><h1>{track.name}</h1><p>{track.short} Configure a scenario and inspect the backend trace.</p></div><IconMark icon={track.icon} tint={track.tint} size={25} /></div>
     <div className="track-layout"><section className="panel config-panel"><div className="panel-heading"><div><h3>Scenario configuration</h3><p>Mock-first · Safe to run locally</p></div><span className="mock-badge"><span className="status-dot online" /> MOCK MODE</span></div>
-      {active === 'jev' && <><Field label="User request"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="info-callout"><Zap size={15} /><span>Structured classification runs before model routing. A Jev match can return a deterministic billing rule with zero model calls.</span></div></>}
-      {active === 'slm' && <><Field label="Task category"><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="classification">Classification</option><option value="extraction">Extraction</option><option value="reasoning">Reasoning</option><option value="generation">Generation</option></select></Field><Field label="Prompt"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><Field label="Model candidate"><ModelPicker models={models} selectedModel={selectedModel} onChange={setSelectedModel} /></Field><div className="model-mini-stats"><span><small>Backend provider</small><b>{runtime?.model_provider || '—'}</b></span><span><small>Catalog quality</small><b>{activeModel ? `${(activeModel.quality * 100).toFixed(1)}%` : '—'}</b></span><span><small>Input cost / 1K</small><b>{fmtCurrency(activeModel?.cost_per_1k_in)}</b></span></div></>}
-      {active === 'edge' && <><Field label="Privacy policy"><select value={privacy} onChange={(e) => setPrivacy(e.target.value)}><option value="strict">Strict · keep supported tasks local</option><option value="standard">Standard · cloud allowed</option></select></Field><Field label="Task category"><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="classification">Classification</option><option value="extraction">Extraction</option><option value="reasoning">Reasoning</option><option value="generation">Generation</option></select></Field><Field label="Private input"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="info-callout teal-callout"><LockKeyhole size={15} /><span>Strict privacy sends classification/extraction to the configured local adapter. Unsupported task categories require cloud capability.</span></div></>}
-      {active === 'switching' && <><Field label="Request to route"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><Field label="Task category"><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="classification">Classification</option><option value="extraction">Extraction</option><option value="reasoning">Reasoning</option><option value="generation">Generation</option><option value="safety_critical">Safety critical</option></select></Field><label className="field-label confidence-label">Router confidence <b>{Math.round(confidence * 100)}%</b></label><input className="range-input" type="range" min="0.1" max="1" step="0.05" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} /><div className="range-hints"><span>Escalate to stronger model</span><span>Optimize for cost</span></div></>}
-      {active === 'parallel' && <><Field label="DAG task"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="dag-preview"><div className="dag-node parent"><span>01</span>Research</div><div className="dag-branches"><div className="dag-line" /><div className="dag-node">02 · Risk check</div><div className="dag-node">03 · Cost analysis</div></div><div className="dag-node final"><span>04</span>Synthesis</div></div><div className="info-callout"><GitBranch size={15} /><span>Independent workers run concurrently; synthesis waits for their outputs.</span></div></>}
-      {active === 'orchestration' && <><Field label="Delegation pattern"><select value={pattern} onChange={(e) => setPattern(e.target.value)}><option value="hierarchical">Hierarchical · planner delegates to workers</option><option value="pipeline">Pipeline · sequential hand-offs</option><option value="swarm">Swarm · peer workers + coordinator</option></select></Field><Field label="Orchestrator task"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="pattern-tags"><span><Network size={13} /> Planner</span><span><Blocks size={13} /> Workers</span><span><GitBranch size={13} /> DAG trace</span></div><div className="info-callout amber-callout"><CircleHelp size={15} /><span>The demo planner is deterministic; connect a planning agent adapter for autonomous decomposition.</span></div></>}
-      {active === 'quantization' && <><Field label="Model artifact"><ModelPicker models={models} selectedModel={selectedModel} onChange={(id) => { setSelectedModel(id); const found = models.find((m) => m.id === id); setPrecision(found?.precisions?.[0] || 'fp8'); }} /></Field><Field label="Requested precision"><select value={precision} onChange={(e) => setPrecision(e.target.value)}>{(activeModel?.precisions || ['fp8']).map((item) => <option key={item} value={item}>{item.toUpperCase()}</option>)}</select></Field><Field label="Task category"><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="classification">Classification</option><option value="extraction">Extraction</option><option value="reasoning">Reasoning</option><option value="generation">Generation</option></select></Field><Field label="Prompt"><textarea rows="3" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="precision-strip">{(activeModel?.precisions || []).map((item) => <button key={item} className={precision === item ? 'selected' : ''} onClick={() => setPrecision(item)}>{item.toUpperCase()}</button>)}</div></>}
+      {active === 'jev' && <><Field label="Business request to decide"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="info-callout"><Zap size={15} /><span>Jev evaluates refund eligibility and urgency rules. A matched billing decision returns directly without a model call.</span></div></>}
+      {active === 'slm' && <><Field label="Support ticket to classify"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><Field label="Small model candidate"><ModelPicker models={models} selectedModel={selectedModel} onChange={setSelectedModel} /></Field><div className="model-mini-stats"><span><small>Runtime provider</small><b>{runtime?.model_provider || '—'}</b></span><span><small>Catalog quality</small><b>{activeModel ? `${(activeModel.quality * 100).toFixed(1)}%` : '—'}</b></span><span><small>Input cost / 1K</small><b>{fmtCurrency(activeModel?.cost_per_1k_in)}</b></span></div><div className="info-callout"><BrainCircuit size={15} /><span>Routes routine ticket triage to a small model and returns a support queue with a reason.</span></div></>}
+      {active === 'edge' && <><Field label="Privacy policy"><select value={privacy} onChange={(e) => setPrivacy(e.target.value)}><option value="strict">Strict · keep supported tasks local</option><option value="standard">Standard · cloud allowed</option></select></Field><Field label="Private note to redact"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="info-callout teal-callout"><LockKeyhole size={15} /><span>Redacts names, emails, and phone numbers before sharing the note. Strict placement is simulated with mock mode; a local runtime is required for on-device inference.</span></div></>}
+      {active === 'switching' && <><Field label="Incident severity task"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><Field label="Task category"><select value={category} onChange={(e) => setCategory(e.target.value)}><option value="classification">Classification</option><option value="extraction">Extraction</option><option value="reasoning">Reasoning</option><option value="generation">Generation</option><option value="safety_critical">Safety critical</option></select></Field><label className="field-label confidence-label">Router confidence <b>{Math.round(confidence * 100)}%</b></label><input className="range-input" type="range" min="0.1" max="1" step="0.05" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} /><div className="range-hints"><span>Below 65%: higher-quality tier</span><span>At / above 65%: cost-optimized</span></div></>}
+      {active === 'parallel' && <><Field label="Pilot brief to delegate"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="dag-preview"><div className="dag-node parent"><span>01</span>Market research</div><div className="dag-branches"><div className="dag-line" /><div className="dag-node">02 · Budget analysis</div><div className="dag-node">03 · Launch risk</div></div><div className="dag-node final"><span>04</span>Launch recommendation</div></div><div className="info-callout"><GitBranch size={15} /><span>Market, budget, and risk agents receive separate tasks concurrently. The launch agent combines their findings.</span></div></>}
+      {active === 'orchestration' && <><Field label="Incident response pattern"><select value={pattern} onChange={(e) => setPattern(e.target.value)}><option value="hierarchical">Hierarchical · planner assigns response agents</option><option value="pipeline">Pipeline · diagnosis to impact to recovery</option><option value="swarm">Swarm · parallel incident specialists</option></select></Field><Field label="Production incident"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="pattern-tags"><span><Network size={13} /> Incident planner</span><span><Blocks size={13} /> Response agents</span><span><GitBranch size={13} /> Coordinated plan</span></div><div className="info-callout amber-callout"><CircleHelp size={15} /><span>The demo uses a deterministic incident plan to show delegation and hand-offs.</span></div></>}
+      {active === 'quantization' && <><Field label="Model for field report"><ModelPicker models={models} selectedModel={selectedModel} onChange={(id) => { setSelectedModel(id); const found = models.find((m) => m.id === id); setPrecision(found?.precisions?.[0] || 'fp8'); }} /></Field><Field label="Requested precision"><select value={precision} onChange={(e) => setPrecision(e.target.value)}>{(activeModel?.precisions || ['fp8']).map((item) => <option key={item} value={item}>{item.toUpperCase()}</option>)}</select></Field><Field label="Field report to summarize"><textarea rows="4" value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field><div className="precision-strip">{(activeModel?.precisions || []).map((item) => <button key={item} className={precision === item ? 'selected' : ''} onClick={() => setPrecision(item)}>{item.toUpperCase()}</button>)}</div><div className="info-callout"><Cpu size={15} /><span>Compare the same operational report across supported precision labels. Mock mode records the request; it does not quantize model weights.</span></div></>}
       <div className="action-row"><button className="button button-primary run-button" disabled={loading || !online} onClick={onRun}>{loading ? <LoaderCircle className="spin" size={16} /> : <Play size={15} fill="currentColor" />}{loading ? 'Running…' : runLabel}</button>{active === 'switching' && <button className="button button-secondary" disabled={loading || !online} onClick={onCompare}><GitCompareArrows size={15} /> Compare confidence</button>}<span className="keyboard-hint">Runs against local API</span></div>
     </section><section className="panel insight-panel"><div className="panel-heading"><div><h3>What this demonstrates</h3><p>Architecture notes</p></div><CircleHelp size={16} className="muted-icon" /></div><TrackInsights id={active} /></section></div>
     {error && <div className="inline-error"><CircleHelp size={16} />{error}</div>}
@@ -396,13 +397,13 @@ function ModelPicker({ models, selectedModel, onChange }) {
 
 function TrackInsights({ id }) {
   const insights = {
-    jev: ['Extract structured decisions before the LLM path.', 'A mapped refund result uses the deterministic billing handler.', 'Trace shows Jev decisions, selected route, and model nodes.'],
-    slm: ['Select a model from the live registry.', 'Compare output quality with the AgentEval suites.', 'Catalog quality/cost values are estimates until measured.'],
-    edge: ['Privacy policy controls edge vs cloud placement.', 'Ollama is the included laptop/local provider.', 'Mobile runtimes need a separate adapter and device validation.'],
-    switching: ['Low confidence can raise the quality bar.', 'Compare high and low confidence against the same task.', 'Retries and validator errors can escalate to another model.'],
-    parallel: ['Independent tasks share an execution wave.', 'The scheduler records critical path duration.', 'The demo uses the real DAG scheduler with mock model calls.'],
-    orchestration: ['Planner/worker relationships are represented as DAG nodes.', 'Compare hierarchical, pipeline, and swarm structures.', 'The sample plan is deterministic rather than an autonomous LLM.'],
-    quantization: ['Choose precision supported by the selected model entry.', 'The trace records requested and verified precision separately.', 'Mock precision is a label; it is not a quantized artifact.'],
+    jev: ['Decides whether a configured business rule handles a refund or urgency case.', 'A refund match returns the billing decision without model inference.', 'The trace shows each structured Jev choice and route.'],
+    slm: ['Classifies an incoming support ticket into a service queue.', 'A small model is selected for routine ticket triage.', 'Compare queue, selected tier, and estimated cost across candidates.'],
+    edge: ['Redacts direct contact details from a private case note.', 'Strict placement requests local handling for extraction tasks.', 'Mock mode demonstrates the route; a local runtime is needed for device inference.'],
+    switching: ['Routes a severity classification using confidence.', 'Below 65% can select a stronger eligible model; higher confidence favors cost.', 'Compare the same incident at high and low confidence to see the model route change.'],
+    parallel: ['Splits a launch pilot into market, budget, and risk assignments.', 'Independent agents receive their own task and execute in the same DAG wave.', 'The synthesis agent combines the workstream outputs into a launch recommendation.'],
+    orchestration: ['Coordinates a production incident response across specialized agents.', 'Compare hierarchical, pipeline, and swarm hand-off patterns.', 'The sample incident plan is deterministic and inspectable.'],
+    quantization: ['Produces an operational field-report summary.', 'Change precision to see the requested model format in the trace.', 'Mock mode does not change model weights or benchmark actual quality.'],
   };
   return <ul className="insight-list">{insights[id].map((line, index) => <li key={line}><span className="insight-check"><Check size={12} /></span><span>{line}</span></li>)}</ul>;
 }
@@ -458,33 +459,35 @@ function EvaluationResult({ run }) {
 function buildRequest(track, state) {
   const { prompt, category, confidence, selectedModel, precision, privacy, pattern, models } = state;
   if (track === 'jev') return { input: prompt, task_category: 'classification' };
-  if (track === 'edge') return { input: prompt, task_category: category, privacy };
+  if (track === 'edge') return { input: prompt, task_category: 'extraction', privacy, metadata: { subtasks: [{ node_id: 'edge-redaction', task: 'Remove names, email addresses, phone numbers, and other direct contact details before this note can be shared.', input: prompt, task_category: 'extraction' }] } };
   if (track === 'switching') return { input: prompt, task_category: category, strategy: 'confidence_based', metadata: { confidence } };
-  if (track === 'slm') return { input: prompt, task_category: category, metadata: { subtasks: [{ node_id: 'slm-candidate', task: prompt, input: prompt, task_category: category, model_id: selectedModel, precision: models.find((model) => model.id === selectedModel)?.precisions?.[0] }] } };
-  if (track === 'quantization') return { input: prompt, task_category: category, metadata: { subtasks: [{ node_id: 'precision-candidate', task: prompt, input: prompt, task_category: category, model_id: selectedModel, precision }] } };
+  if (track === 'slm') return { input: prompt, task_category: category, metadata: { subtasks: [{ node_id: 'slm-ticket-router', task: 'Classify this support ticket and assign the best queue: Account Access, Technical Support, Billing, or General. Include a short reason.', input: prompt, task_category: category, model_id: selectedModel, precision: models.find((model) => model.id === selectedModel)?.precisions?.[0] }] } };
+  if (track === 'quantization') return { input: prompt, task_category: category, metadata: { subtasks: [{ node_id: 'precision-summary', task: 'Summarize the field report as three concise bullets: measured result, limitation, and recommended rollout decision.', input: prompt, task_category: category, model_id: selectedModel, precision }] } };
   let nodes;
   if (track === 'parallel') nodes = [
-    { node_id: 'research', task: 'Retrieve facts for: ' + prompt, input: 'Retrieve facts for: ' + prompt, task_category: 'extraction' },
-    { node_id: 'risk', task: 'Check risks for: ' + prompt, input: 'Check risks for: ' + prompt, task_category: 'classification' },
-    { node_id: 'cost', task: 'Estimate costs for: ' + prompt, input: 'Estimate costs for: ' + prompt, task_category: 'computation' },
-    { node_id: 'synthesis', task: 'Synthesize the completed work', input: 'Synthesize the completed work', task_category: 'generation', depends_on: ['research', 'risk', 'cost'] },
+    { node_id: 'market-research-agent', task: 'Extract the pilot duration, target users, expected demand, and key milestone.', input: prompt, task_category: 'extraction' },
+    { node_id: 'budget-agent', task: 'Calculate the monthly budget from the total budget and pilot duration.', input: prompt, task_category: 'computation' },
+    { node_id: 'launch-risk-agent', task: 'Identify launch risks and a mitigation for each.', input: prompt, task_category: 'classification' },
+    { node_id: 'launch-synthesis-agent', task: 'Combine market, budget, and risk agent findings into a launch recommendation.', input: prompt, task_category: 'generation', depends_on: ['market-research-agent', 'budget-agent', 'launch-risk-agent'] },
   ];
   else if (pattern === 'pipeline') nodes = [
-    { node_id: 'research', task: 'Research: ' + prompt, task_category: 'extraction' },
-    { node_id: 'analysis', task: 'Analyze research', task_category: 'reasoning', depends_on: ['research'] },
-    { node_id: 'response', task: 'Draft final response', task_category: 'generation', depends_on: ['analysis'] },
+    { node_id: 'incident-diagnosis-agent', task: 'Identify affected service, symptom, start time, and likely trigger.', input: prompt, task_category: 'extraction' },
+    { node_id: 'incident-impact-agent', task: 'Assess user impact and incident severity from diagnosis.', input: prompt, task_category: 'reasoning', depends_on: ['incident-diagnosis-agent'] },
+    { node_id: 'incident-mitigation-agent', task: 'Choose immediate containment and recovery steps.', input: prompt, task_category: 'reasoning', depends_on: ['incident-impact-agent'] },
+    { node_id: 'incident-update-agent', task: 'Draft a concise status update from the mitigation plan.', input: prompt, task_category: 'generation', depends_on: ['incident-mitigation-agent'] },
   ];
   else if (pattern === 'swarm') nodes = [
-    { node_id: 'research-agent', task: 'Research: ' + prompt, task_category: 'extraction' },
-    { node_id: 'risk-agent', task: 'Review safety and policy', task_category: 'classification' },
-    { node_id: 'analysis-agent', task: 'Analyze implications', task_category: 'reasoning' },
-    { node_id: 'coordinator', task: 'Combine peer findings', task_category: 'generation', depends_on: ['research-agent', 'risk-agent', 'analysis-agent'] },
+    { node_id: 'incident-diagnostics-agent', task: 'Diagnose the affected service and likely deployment trigger.', input: prompt, task_category: 'extraction' },
+    { node_id: 'incident-risk-agent', task: 'Assess customer and operational impact.', input: prompt, task_category: 'classification' },
+    { node_id: 'incident-mitigation-agent', task: 'Recommend a safe containment and recovery action.', input: prompt, task_category: 'reasoning' },
+    { node_id: 'incident-coordinator-agent', task: 'Merge peer findings into a prioritized incident response.', input: prompt, task_category: 'generation', depends_on: ['incident-diagnostics-agent', 'incident-risk-agent', 'incident-mitigation-agent'] },
   ];
   else nodes = [
-    { node_id: 'planner', task: 'Plan work for: ' + prompt, task_category: 'classification' },
-    { node_id: 'researcher', task: 'Find supporting facts', task_category: 'extraction', depends_on: ['planner'] },
-    { node_id: 'analyst', task: 'Analyze the task', task_category: 'reasoning', depends_on: ['planner'] },
-    { node_id: 'synthesizer', task: 'Combine findings', task_category: 'generation', depends_on: ['researcher', 'analyst'] },
+    { node_id: 'incident-planner-agent', task: 'Create an incident response plan with diagnosis, containment, recovery, and customer communication workstreams.', input: prompt, task_category: 'classification' },
+    { node_id: 'incident-diagnostics-agent', task: 'Identify the affected service, symptom, and likely trigger.', input: prompt, task_category: 'extraction', depends_on: ['incident-planner-agent'] },
+    { node_id: 'incident-mitigation-agent', task: 'Recommend immediate containment and recovery steps.', input: prompt, task_category: 'reasoning', depends_on: ['incident-planner-agent'] },
+    { node_id: 'incident-communications-agent', task: 'Draft a clear customer status update.', input: prompt, task_category: 'generation', depends_on: ['incident-planner-agent'] },
+    { node_id: 'incident-coordinator-agent', task: 'Coordinate diagnosis, mitigation, and customer update into a prioritized response.', input: prompt, task_category: 'generation', depends_on: ['incident-diagnostics-agent', 'incident-mitigation-agent', 'incident-communications-agent'] },
   ];
   return { input: prompt, task_category: 'generation', metadata: { subtasks: nodes } };
 }
